@@ -1,7 +1,22 @@
-output
-get_regions.py
-public_buckets.py
-draft
-get_resources.sh
+output/
+
+# Python - virtual environments
+venv/
+.venv/
+env/
+.env/
+
+# Python - byte-compiled files (must not hide .py source files)
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# macOS metadata
 .DS_Store
+
+# Drafts and planned scripts (not yet implemented)
+draft/
+get_resources.sh
 get_load_balancers.sh
+
