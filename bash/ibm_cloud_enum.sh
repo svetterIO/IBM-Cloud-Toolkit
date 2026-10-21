@@ -14,8 +14,9 @@
 # and the following plugins of IBM Cloud CLI: databases ("cdb"), vpc-infrastructure ("is")
 srcdir="$(dirname "${BASH_SOURCE[0]}")"
 . "$srcdir/utils.sh"
+VERSION="v2.0"
 BANNER="\n${BLUE}${BOLD}==============================================${RESET}
-${ORANGE}${BOLD}          IBM Cloud ToolKit v1.2 ${RESET}
+${ORANGE}${BOLD}          IBM Cloud ToolKit ${VERSION} ${RESET}
 ${BLUE}${BOLD}==============================================${RESET}
 IBM Cloud enumeration tool
 github.com/manotux/IBM-Cloud-Toolkit
