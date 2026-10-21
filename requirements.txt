@@ -1,0 +1,8 @@
+# IBM Cloud ToolKit – Python dependencies
+#
+# The Python implementation uses only the standard library and the IBM Cloud CLI.
+# No third-party packages are required at runtime.
+#
+# Optional development / testing dependencies:
+# pytest>=7.0
+# pyflakes>=3.0
