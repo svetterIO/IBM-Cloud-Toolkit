@@ -11,7 +11,6 @@ set -euo pipefail
 PLUGINS=(
     cloud-databases
     vpc-infrastructure
-    schematic
     schematics
     cloud-object-storage
     container-registry

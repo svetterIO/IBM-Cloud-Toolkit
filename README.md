@@ -95,7 +95,6 @@ After installing the CLI, install the required plugins:
 ```bash
 ibmcloud plugin install cloud-databases
 ibmcloud plugin install vpc-infrastructure
-ibmcloud plugin install schematic
 ibmcloud plugin install schematics
 ibmcloud plugin install cloud-object-storage
 ibmcloud plugin install container-registry

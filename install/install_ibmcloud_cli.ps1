@@ -9,7 +9,6 @@ $ErrorActionPreference = "Stop"
 $Plugins = @(
     "cloud-databases",
     "vpc-infrastructure",
-    "schematic",
     "schematics",
     "cloud-object-storage",
     "container-registry",

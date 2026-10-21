@@ -21,7 +21,6 @@ import urllib.request
 PLUGINS = [
     "cloud-databases",
     "vpc-infrastructure",
-    "schematic",
     "schematics",
     "cloud-object-storage",
     "container-registry",
