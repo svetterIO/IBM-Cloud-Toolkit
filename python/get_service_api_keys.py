@@ -54,6 +54,8 @@ def fetch_keys_for_service(service_id: str, service_name: str, debug: bool) -> l
         for k in keys:
             k["service_id"] = service_id
             k["service_name"] = service_name
+            # Direct link to this Service ID's API keys tab in the IBM Cloud console
+            k["browser_url"] = f"https://cloud.ibm.com/iam/serviceids/{service_id}?tab=apikeys"
         return keys
     except json.JSONDecodeError:
         return []

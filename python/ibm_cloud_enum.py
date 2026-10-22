@@ -44,12 +44,43 @@ github.com/manotux/IBM-Cloud-Toolkit
 """
 
 
+# Canonical mapping: action name -> (module_attr, script_filename, flag_set)
+# flag_set is one of: "common", "full_debug", "service_api", "users", "download"
+ACTIONS: dict[str, tuple[str, str, str]] = {
+    "get_api_keys":          ("get_api_keys",          "get_api_keys.py",          "common"),
+    "get_service_api_keys":  ("get_service_api_keys",  "get_service_api_keys.py",  "service_api"),
+    "get_custom_roles":      ("get_custom_roles",       "get_custom_roles.py",      "full_debug"),
+    "get_users":             ("get_users",              "get_users.py",             "users"),
+    "get_user_policies":     ("get_user_policies",      "get_user_policies.py",     "common"),
+    "get_mfa":               ("get_mfa",                "get_mfa.py",               "full_debug"),
+    "get_regions":           ("get_regions",            "get_regions.py",           "common"),
+    "get_floating_IPs":      ("get_floating_IPs",       "get_floating_IPs.py",      "common"),
+    "get_VSIs":              ("get_VSIs",               "get_VSIs.py",              "common"),
+    "get_schematics":        ("get_schematics",         "get_schematics.py",        "common"),
+    "get_clusters":          ("get_clusters",           "get_clusters.py",          "full_debug"),
+    "get_databases":         ("get_databases",          "get_databases.py",         "common"),
+    "get_buckets":           ("get_buckets",            "get_buckets.py",           "common"),
+    "get_buckets_files":     ("get_buckets_files",      "get_buckets_files.py",     "common"),
+    "get_security_groups":   ("get_security_groups",    "get_security_groups.py",   "common"),
+    "get_code_engine":       ("get_code_engine",        "get_code_engine.py",       "full_debug"),
+    "download_buckets_files":("download_buckets_files", "download_buckets_files.py","download"),
+}
+
+
 def parse_args(argv=None):
     p = argparse.ArgumentParser(
         prog="ibm_cloud_enum.py",
-        description="IBM Cloud ToolKit – run all enumeration modules.",
+        description=(
+            "IBM Cloud ToolKit – run all enumeration modules, or a single one.\n\n"
+            "Available actions (same names as the underlying scripts):\n  "
+            + "\n  ".join(sorted(ACTIONS))
+        ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
+    p.add_argument("action", nargs="?", default=None,
+                   metavar="ACTION",
+                   help="Run a single module instead of all (e.g. get_api_keys). "
+                        "Omit to run everything.")
     p.add_argument("-o", metavar="OUTPUT_DIR", default="",
                    help="Output folder for all modules (default: each module uses 'output')")
     p.add_argument("-v", action="store_true",
@@ -107,6 +138,78 @@ def _run_module(module_main, script_name: str, common_flags: list[str], extra_fl
             raise
 
 
+def _import_all() -> dict:
+    """Lazily import all modules and return a name->module mapping."""
+    import get_api_keys
+    import get_service_api_keys
+    import get_custom_roles
+    import get_users
+    import get_user_policies
+    import get_mfa
+    import get_regions
+    import get_floating_IPs
+    import get_VSIs
+    import get_schematics
+    import get_clusters
+    import get_databases
+    import get_buckets
+    import get_buckets_files
+    import download_buckets_files
+    import get_security_groups
+    import get_code_engine
+    return {
+        "get_api_keys": get_api_keys,
+        "get_service_api_keys": get_service_api_keys,
+        "get_custom_roles": get_custom_roles,
+        "get_users": get_users,
+        "get_user_policies": get_user_policies,
+        "get_mfa": get_mfa,
+        "get_regions": get_regions,
+        "get_floating_IPs": get_floating_IPs,
+        "get_VSIs": get_VSIs,
+        "get_schematics": get_schematics,
+        "get_clusters": get_clusters,
+        "get_databases": get_databases,
+        "get_buckets": get_buckets,
+        "get_buckets_files": get_buckets_files,
+        "download_buckets_files": download_buckets_files,
+        "get_security_groups": get_security_groups,
+        "get_code_engine": get_code_engine,
+    }
+
+
+def _build_flags(args, flag_set: str) -> list[str]:
+    """Return the flag list for a given flag_set name."""
+    common: list[str] = []
+    if args.o:
+        common += ["-o", args.o]
+    if args.v:
+        common.append("-v")
+
+    if flag_set == "common":
+        return common
+    if flag_set == "full_debug":
+        return common + (["-d"] if args.d else [])
+    if flag_set == "service_api":
+        return common + ["-p", str(args.p)]
+    if flag_set == "users":
+        return common + (["-d"] if args.d else []) + ["-p", str(args.p)]
+    if flag_set == "download":
+        flags = common + ["-m", str(args.m)]
+        if args.f:
+            flags.append("-f")
+        return flags
+    return common
+
+
+def _run_action(action_name: str, args, modules: dict) -> None:
+    """Execute a single action by name."""
+    mod_attr, script_file, flag_set = ACTIONS[action_name]
+    mod = modules[mod_attr]
+    flags = _build_flags(args, flag_set)
+    _run_module(mod.main, script_file, flags)
+
+
 def main(argv=None):
     args = parse_args(argv)
 
@@ -114,6 +217,30 @@ def main(argv=None):
         print("Error: -d flag requires -v flag to be set", file=sys.stderr)
         sys.exit(1)
 
+    # ── Single-action mode ────────────────────────────────────────────────────
+    if args.action is not None:
+        if args.action not in ACTIONS:
+            print(f"Error: unknown action '{args.action}'", file=sys.stderr)
+            print(f"Available actions: {', '.join(sorted(ACTIONS))}", file=sys.stderr)
+            sys.exit(1)
+
+        print(BANNER)
+        require_ibmcloud_login()
+        if args.o:
+            from utils import ensure_output_dir
+            ensure_output_dir(args.o)
+
+        modules = _import_all()
+        _run_action(args.action, args, modules)
+
+        print(" ")
+        print(SEPARATOR)
+        output_dir = args.o if args.o else "output"
+        print(f"Results saved to folder {BOLD}{output_dir}{RESET}")
+        print(" ")
+        return
+
+    # ── Full-run mode ─────────────────────────────────────────────────────────
     print(BANNER)
 
     # Dependency and login checks
@@ -134,62 +261,38 @@ def main(argv=None):
     print(f"· {BOLD}User Email:{RESET} {info['user_email']}")
     print()
 
-    # Build flag lists
-    common: list[str] = []
     if args.o:
         from utils import ensure_output_dir
         ensure_output_dir(args.o)
-        common += ["-o", args.o]
-    if args.v:
-        common.append("-v")
 
-    full_debug: list[str] = list(common)
-    if args.d:
-        full_debug.append("-d")
+    modules = _import_all()
 
-    # Lazy imports of all modules to avoid side effects at import time
-    import get_api_keys
-    import get_service_api_keys
-    import get_custom_roles
-    import get_users
-    import get_user_policies
-    import get_mfa
-    import get_regions
-    import get_floating_IPs
-    import get_VSIs
-    import get_schematics
-    import get_clusters
-    import get_databases
-    import get_buckets
-    import download_buckets_files
-    import get_security_groups
-    import get_code_engine
+    # Ordered full run (get_buckets_files skipped by default – can be very slow)
+    FULL_RUN_ORDER = [
+        "get_api_keys",
+        "get_service_api_keys",
+        "get_custom_roles",
+        "get_users",
+        "get_user_policies",
+        "get_mfa",
+        "get_regions",
+        "get_floating_IPs",
+        "get_VSIs",
+        "get_schematics",
+        "get_clusters",
+        "get_databases",
+        "get_buckets",
+        # "get_buckets_files",  # disabled by default (can be very slow)
+        "get_security_groups",
+        "get_code_engine",
+    ]
 
-    _run_module(get_api_keys.main, "get_api_keys.py", common)
-    _run_module(get_service_api_keys.main, "get_service_api_keys.py", common, ["-p", str(args.p)])
-    _run_module(get_custom_roles.main, "get_custom_roles.py", full_debug)
-    _run_module(get_users.main, "get_users.py", full_debug, ["-p", str(args.p)])
-    _run_module(get_user_policies.main, "get_user_policies.py", common)
-    _run_module(get_mfa.main, "get_mfa.py", full_debug)
-    _run_module(get_regions.main, "get_regions.py", common)
-    _run_module(get_floating_IPs.main, "get_floating_IPs.py", common)
-    _run_module(get_VSIs.main, "get_VSIs.py", common)
-    _run_module(get_schematics.main, "get_schematics.py", common)
-    _run_module(get_clusters.main, "get_clusters.py", full_debug)
-    _run_module(get_databases.main, "get_databases.py", common)
-    _run_module(get_buckets.main, "get_buckets.py", common)
-    # get_buckets_files is disabled by default (can be very slow)
-    # _run_module(get_buckets_files.main, "get_buckets_files.py", common)
-
-    _run_module(get_security_groups.main, "get_security_groups.py", common)
-    _run_module(get_code_engine.main, "get_code_engine.py", full_debug)
+    for action in FULL_RUN_ORDER:
+        _run_action(action, args, modules)
 
     # download_buckets_files runs last, only when -m is explicitly provided
     if args.m is not None:
-        dl_flags = ["-m", str(args.m)]
-        if args.f:
-            dl_flags.append("-f")
-        _run_module(download_buckets_files.main, "download_buckets_files.py", common, dl_flags)
+        _run_action("download_buckets_files", args, modules)
     else:
         print()
         print(SEPARATOR)

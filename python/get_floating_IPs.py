@@ -108,7 +108,8 @@ def main(argv=None):
     print()
     print(f"All floating IPs saved to: {BOLD}{output_path}{RESET}")
     print()
-    print_console_link("Manage Floating IPs (VPC)", "https://cloud.ibm.com/vpc/network/floatingIPs")
+    # Navigate to: IBM Cloud Console > VPC Infrastructure > Network > Floating IPs
+    print_console_link("Manage Floating IPs (VPC Infrastructure)", "https://cloud.ibm.com/infrastructure/network/floatingIPs")
 
 
 if __name__ == "__main__":

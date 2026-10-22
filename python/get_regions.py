@@ -65,7 +65,12 @@ def main(argv=None):
     print()
     print(f"All regions saved to: {BOLD}{output_path}{RESET}")
     print()
-    print_console_link("View IBM Cloud regions", "https://cloud.ibm.com/docs/overview?topic=overview-locations")
+    # There is no region list page in the IBM Cloud UI. Use these instead:
+    # - Docs: official list of all available regions and data centres.
+    # - Resource list: filter by Location to see which resources exist in each region,
+    #   which helps identify resources provisioned in unexpected or disallowed regions.
+    print_console_link("IBM Cloud regions reference (docs)", "https://cloud.ibm.com/docs/overview?topic=overview-locations")
+    print_console_link("Resource list (filter by Location to audit regions)", "https://cloud.ibm.com/resources")
 
 
 if __name__ == "__main__":

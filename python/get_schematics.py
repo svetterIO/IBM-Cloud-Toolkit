@@ -117,6 +117,7 @@ def main(argv=None):
     print(f"{YELLOW}{BOLD}Security Note:{RESET} Review this file for secrets in variables "
           "using tools like TruffleHog/detect-secrets or manually.")
     print()
+    # Navigate to: IBM Cloud Console > Schematics > Workspaces
     print_console_link("Manage Schematics workspaces", "https://cloud.ibm.com/schematics/workspaces")
 
 

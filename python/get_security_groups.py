@@ -181,7 +181,14 @@ def main(argv=None):
         print(f"{BOLD}Total Classic Security Groups: 0{RESET}")
         print("No Classic Infrastructure Security Groups found.")
     print()
-    print_console_link("Manage VPC Security Groups", "https://cloud.ibm.com/vpc/network/securityGroups")
+    # VPC Security Groups:
+    #   Navigate to: IBM Cloud Console > VPC Infrastructure > Network > Security groups
+    print_console_link("Manage VPC Security Groups (VPC Infrastructure)", "https://cloud.ibm.com/infrastructure/network/securityGroups")
+    # VPC overview (lists all VPCs with their attached security groups):
+    #   Navigate to: IBM Cloud Console > VPC Infrastructure > Network > VPCs
+    print_console_link("Manage VPCs (VPC Infrastructure)", "https://cloud.ibm.com/infrastructure/network/vpcs")
+    # Classic Infrastructure security groups are managed via the SL CLI;
+    # there is no dedicated Classic SG page in the IBM Cloud console.
 
 
 if __name__ == "__main__":

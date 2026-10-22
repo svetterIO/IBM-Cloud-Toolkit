@@ -85,6 +85,8 @@ def main(argv=None):
     else:
         print("No users with direct access policies found.")
     print()
+    # Navigate to: IBM Cloud Console > Manage > Access (IAM) > Users
+    # Select the user > Access tab > Access policies to review their direct policy assignments.
     print_console_link("Review user access policies", "https://cloud.ibm.com/iam/users")
 
 
