@@ -41,7 +41,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from utils import (
     BOLD, CYAN, GREEN, ORANGE, RED, RESET, SEPARATOR, YELLOW,
-    _ibmcloud, ensure_output_dir, failure,
+    _ibmcloud, ensure_output_dir, failure, print_console_link,
     require_ibmcloud_cos, require_ibmcloud_login, warning,
 )
 
@@ -91,10 +91,51 @@ def sanitize_key(key: str) -> str:
     return str(Path(*safe_parts)) if safe_parts else "_"
 
 
-def cos_browser_url(endpoint: str, bucket: str, key: str) -> str:
-    """Build an HTTPS URL to open the object in a browser / download directly."""
+# Known storage-class suffixes that IBM COS appends to the LocationConstraint
+# e.g. "us-south-smart" → "us-south", "eu-de-standard" → "eu-de"
+_LC_SUFFIXES = re.compile(
+    r"-(standard|smart|vault|cold|flex|onerate_active|active)$",
+    re.IGNORECASE,
+)
+
+def location_to_endpoint_region(location_constraint: str) -> str:
+    """Strip storage-class suffix from a COS LocationConstraint to get the
+    bare region used in public endpoint hostnames.
+
+    Examples:
+      us-south-smart    → us-south
+      eu-de-standard    → eu-de
+      ca-tor-vault      → ca-tor
+      us-south          → us-south  (no suffix, unchanged)
+    """
+    return _LC_SUFFIXES.sub("", location_constraint)
+
+
+def cos_browser_url(endpoint_region: str, bucket: str, key: str) -> str:
+    """Build an HTTPS URL to open the object in a browser.
+
+    endpoint_region must already be the bare region (no storage-class suffix),
+    e.g. "us-south", "eu-de".
+    """
     encoded_key = urllib.parse.quote(key, safe="")
-    return f"https://{endpoint}/{bucket}/{encoded_key}"
+    host = f"s3.{endpoint_region}.cloud-object-storage.appdomain.cloud"
+    return f"https://{host}/{bucket}/{encoded_key}"
+
+
+def is_object_public(url: str) -> bool:
+    """Return True if the object is publicly accessible (no auth needed).
+
+    Issues a HEAD request without credentials; a 200 response means public.
+    Any other status (403, 404, error) means private/not found.
+    """
+    import urllib.request
+    import urllib.error
+    req = urllib.request.Request(url, method="HEAD")
+    try:
+        with urllib.request.urlopen(req, timeout=5) as resp:  # noqa: S310
+            return resp.status == 200
+    except (urllib.error.URLError, urllib.error.HTTPError, OSError):
+        return False
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
@@ -192,8 +233,9 @@ def main(argv=None):
         for bucket in buckets:
             bname = bucket.get("Name", "")
             bregion = bucket.get("LocationConstraint", "")
-            # Derive a COS public endpoint for browser URLs
-            cos_endpoint = f"s3.{bregion}.cloud-object-storage.appdomain.cloud"
+            # Strip storage-class suffix (e.g. "us-south-smart" → "us-south")
+            # to get the bare region used in public endpoint hostnames
+            endpoint_region = location_to_endpoint_region(bregion)
 
             print(f"  Bucket: {BOLD}{bname}{RESET} (Region: {bregion})")
 
@@ -243,16 +285,19 @@ def main(argv=None):
                         failed += 1
                         continue
 
-                browser_url = cos_browser_url(cos_endpoint, bname, key)
+                browser_url = cos_browser_url(endpoint_region, bname, key)
+                publicly_accessible = is_object_public(browser_url)
 
                 # Add to manifest (always, even if skipped/failed)
                 manifest.append({
                     "instance": inst_name,
                     "bucket": bname,
                     "region": bregion,
+                    "endpoint_region": endpoint_region,
                     "original_key": key,
                     "local_path": str(local_path),
                     "browser_url": browser_url,
+                    "public": publicly_accessible,
                 })
 
                 if args.v:
@@ -263,7 +308,7 @@ def main(argv=None):
                     print(f"{BOLD}[DEBUG]{RESET} Downloading: {key} -> {local_path}{sanitized_note}")
 
                 if not args.y and local_path.exists():
-                    print(f"    Skipped (exists): {local_path.name}")
+                    print(f"    {CYAN}Skipped (exists):{RESET} {local_path.name}")
                     skipped += 1
                     continue
 
@@ -304,6 +349,7 @@ def main(argv=None):
     if manifest:
         print(f"Path manifest:  {BOLD}{manifest_path}{RESET}")
         print(f"  (maps original COS keys → local paths + browser URLs)")
+    print_console_link("IBM Cloud Object Storage", "https://cloud.ibm.com/objectstorage/instances")
 
 
 if __name__ == "__main__":
