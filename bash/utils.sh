@@ -118,6 +118,16 @@ warning() {
     echo -e "${BOLD}WARNING: ${RESET}$*"
 }
 
+# Print a clickable IBM Cloud console link at the end of a module's output.
+# Usage: print_console_link "Label" "https://cloud.ibm.com/..."
+print_console_link() {
+    local label="$1"
+    local url="$2"
+    echo " "
+    echo -e "${CYAN}${BOLD}Open in IBM Cloud Console:${RESET} ${label}"
+    echo -e "  ${CYAN}${url}${RESET}"
+}
+
 get_regions() {
     REGIONS=$(ibmcloud regions --output json | jq -r '.[].Name') || failure "Could not retrieve regions. Retry."
     if [[ -z "${REGIONS:-}" ]]; then

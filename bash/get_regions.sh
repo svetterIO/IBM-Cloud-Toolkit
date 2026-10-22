@@ -113,3 +113,4 @@ if [ "$DEBUG" = true ]; then
     echo -e "${BOLD}[DEBUG]${RESET}   Total regions: $TOTAL_REGIONS"
     echo -e "${BOLD}[DEBUG]${RESET}   Output file: $OUTPUT_PATH"
 fi
+print_console_link "IBM Cloud Regions" "https://cloud.ibm.com/docs/overview?topic=overview-locations"

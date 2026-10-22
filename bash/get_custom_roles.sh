@@ -144,3 +144,4 @@ else
     echo " "
     echo -e "Review custom roles for excessive privileges."
 fi
+print_console_link "IBM Cloud Custom Roles" "https://cloud.ibm.com/iam/roles"

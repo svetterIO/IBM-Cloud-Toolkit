@@ -363,3 +363,4 @@ echo ""
 echo -e "Review Env Vars and ConfigMaps for secrets using tools like TruffleHog/detect-secrets or manually."
 
 ibmcloud target --unset-resource-group -q &>/dev/null
+print_console_link "IBM Cloud Code Engine Projects" "https://cloud.ibm.com/codeengine/projects"

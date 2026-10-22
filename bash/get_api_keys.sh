@@ -134,3 +134,4 @@ else
         echo "All API keys have been rotated within the last ${BOLD}${ROTATION_DAYS} days${RESET}."
     fi
 fi
+print_console_link "IBM Cloud API Keys" "https://cloud.ibm.com/iam/apikeys"

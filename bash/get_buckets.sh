@@ -140,5 +140,6 @@ OUTPUT_PATH="${OUTPUT_DIR}/${OUTPUT_FILE}"
 : > "$OUTPUT_PATH" || failure "Error while creating the output file: ${BOLD}$OUTPUT_PATH${RESET}"
 echo "$ALL_BUCKETS_JSON" | jq '.' > "$OUTPUT_PATH"
 echo -e "All buckets saved to: ${BOLD}${OUTPUT_PATH}${RESET}"
+print_console_link "IBM Cloud Object Storage" "https://cloud.ibm.com/objectstorage/instances"
 # Explicitly exit with success
 exit 0

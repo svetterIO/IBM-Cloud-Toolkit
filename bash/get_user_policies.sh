@@ -105,3 +105,4 @@ if [[ $USERS_FOUND -eq 1 ]]; then
 else
     echo "No users with direct access policies found."
 fi
+print_console_link "IBM Cloud User Access Policies" "https://cloud.ibm.com/iam/users"

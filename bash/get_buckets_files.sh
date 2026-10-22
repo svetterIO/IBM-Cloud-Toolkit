@@ -170,3 +170,4 @@ if [ "$DEBUG" = true ]; then
 fi
 echo " "
 echo -e "All bucket file listings saved to: ${BOLD}${OUTPUT_PATH}${RESET}"
+print_console_link "IBM Cloud Object Storage" "https://cloud.ibm.com/objectstorage/instances"

@@ -236,3 +236,4 @@ if [ "$DEBUG" = true ]; then
     echo -e "${BOLD}[DEBUG]${RESET}   Total: $TOTAL_DBS"
     echo -e "${BOLD}[DEBUG]${RESET}   Public Endpoints: $PUBLIC_COUNT"
 fi
+print_console_link "IBM Cloud Databases" "https://cloud.ibm.com/databases"

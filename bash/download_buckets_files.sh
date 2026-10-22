@@ -5,6 +5,10 @@
 # Downloads files from all IBM Cloud Object Storage buckets.
 # Supports optional flattening of output filenames (strip path components).
 #
+# A manifest file (_path_manifest.json) is written next to the download folder.
+# Each entry records: instance, bucket, region, endpoint_region, original_key,
+# local_path, browser_url, and public (whether the object is publicly accessible).
+#
 # Requires: IBM Cloud CLI and jq.
 
 srcdir="$(dirname "${BASH_SOURCE[0]}")"
@@ -54,6 +58,42 @@ require_ibmcloud_login
 if [ ! -d "$OUTPUT_DIR" ]; then
     mkdir -p "$OUTPUT_DIR" || failure "Error while creating the output directory: ${BOLD}$OUTPUT_DIR${RESET}"
 fi
+
+# Strip storage-class suffix from a COS LocationConstraint to get the bare
+# region used in public S3 endpoint hostnames.
+# e.g. "us-south-smart" -> "us-south", "eu-de-standard" -> "eu-de"
+location_to_endpoint_region() {
+    echo "$1" | sed -E 's/-(standard|smart|vault|cold|flex|onerate_active|active)$//I'
+}
+
+# Build the HTTPS browser URL for a COS object.
+# $1 = endpoint_region (bare, e.g. "us-south")
+# $2 = bucket name
+# $3 = object key (will be URL-encoded)
+cos_browser_url() {
+    local region="$1" bucket="$2" key="$3"
+    local encoded_key
+    encoded_key=$(printf '%s' "$key" | python3 -c "import sys,urllib.parse; print(urllib.parse.quote(sys.stdin.read(),safe=''))" 2>/dev/null \
+        || printf '%s' "$key" | sed 's/ /%20/g')
+    echo "https://s3.${region}.cloud-object-storage.appdomain.cloud/${bucket}/${encoded_key}"
+}
+
+# Check if a COS object is publicly accessible (no auth needed).
+# Returns 0 (true) if HTTP 200, 1 (false) otherwise.
+is_object_public() {
+    local url="$1"
+    local http_code
+    if command -v curl &>/dev/null; then
+        http_code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 --head "$url" 2>/dev/null)
+        [[ "$http_code" == "200" ]]
+    else
+        return 1
+    fi
+}
+
+# Manifest: path of the JSON file that maps COS keys -> local paths + URLs
+MANIFEST_PATH="${OUTPUT_DIR%/}_path_manifest.json"
+MANIFEST_ENTRIES="[]"
 
 echo " "
 echo "${SEPARATOR}"
@@ -133,9 +173,10 @@ while IFS= read -r instance; do
     BUCKET_COUNT=$(echo "$BUCKETS_JSON" | jq '.Buckets | length')
     TOTAL_BUCKETS=$((TOTAL_BUCKETS + BUCKET_COUNT))
     echo -e "Processing instance: ${BOLD}$INSTANCE_NAME${RESET} ($BUCKET_COUNT bucket(s))"
-    while IFS= read -r bucket; do 
+    while IFS= read -r bucket; do
         BUCKET_NAME=$(echo "$bucket" | jq -r '.Name')
         BUCKET_REGION=$(echo "$bucket" | jq -r '.LocationConstraint')
+        ENDPOINT_REGION=$(location_to_endpoint_region "$BUCKET_REGION")
         echo -e "  Bucket: ${BOLD}$BUCKET_NAME${RESET} (Region: $BUCKET_REGION)"
         if [ "$DEBUG" = true ]; then
             echo -e "${BOLD}[DEBUG]${RESET} Running command: ibmcloud cos list-objects-v2 --max-items $MAX_ITEMS --bucket \"$BUCKET_NAME\" --region \"$BUCKET_REGION\" --output json"
@@ -165,13 +206,36 @@ while IFS= read -r instance; do
                     local_path="${OUTPUT_DIR}/${base_name}"
                 else
                     local_path="${OUTPUT_DIR}/${file_key}"
-                    mkdir -p "$(dirname "$local_path")" 2>/dev/null
+                    mkdir -p "$(dirname "$local_path")" 2>/dev/null || {
+                        warning "Cannot create directory for '${file_key}'"
+                        FAILED_FILES=$((FAILED_FILES + 1))
+                        continue
+                    }
                 fi
+                BROWSER_URL=$(cos_browser_url "$ENDPOINT_REGION" "$BUCKET_NAME" "$file_key")
+                # Check if object is publicly accessible
+                if is_object_public "$BROWSER_URL"; then
+                    IS_PUBLIC="true"
+                else
+                    IS_PUBLIC="false"
+                fi
+                # Append to manifest (always, even for skipped/failed)
+                ENTRY=$(jq -n \
+                    --arg inst "$INSTANCE_NAME" \
+                    --arg bkt "$BUCKET_NAME" \
+                    --arg reg "$BUCKET_REGION" \
+                    --arg ereg "$ENDPOINT_REGION" \
+                    --arg key "$file_key" \
+                    --arg lp "$local_path" \
+                    --arg url "$BROWSER_URL" \
+                    --argjson pub "$IS_PUBLIC" \
+                    '{instance:$inst,bucket:$bkt,region:$reg,endpoint_region:$ereg,original_key:$key,local_path:$lp,browser_url:$url,public:$pub}')
+                MANIFEST_ENTRIES=$(echo "$MANIFEST_ENTRIES" | jq --argjson e "$ENTRY" '. + [$e]')
                 if [ "$DEBUG" = true ]; then
                     echo -e "${BOLD}[DEBUG]${RESET} Downloading: $file_key -> $local_path"
                 fi
                 if [ "$OVERWRITE" = false ] && [ -f "$local_path" ]; then
-                    echo "    Skipped (exists): $(basename "$file_key")"
+                    echo -e "    ${CYAN}Skipped (exists):${RESET} $(basename "$file_key")"
                     SKIPPED_FILES=$((SKIPPED_FILES + 1))
                     continue
                 fi
@@ -202,6 +266,12 @@ fi
 
 echo " "
 echo -e "Files saved to: ${BOLD}${OUTPUT_DIR}${RESET}"
+# Write manifest if we have entries
+if [[ $(echo "$MANIFEST_ENTRIES" | jq 'length') -gt 0 ]]; then
+    echo "$MANIFEST_ENTRIES" | jq '.' > "$MANIFEST_PATH"
+    echo -e "Path manifest:  ${BOLD}${MANIFEST_PATH}${RESET}"
+    echo -e "  (maps original COS keys -> local paths + browser URLs)"
+fi
 if [ "$DEBUG" = true ]; then
     echo " "
     echo -e "${BOLD}[DEBUG]${RESET} Summary:"
@@ -215,4 +285,5 @@ if [ "$DEBUG" = true ]; then
     echo -e "${BOLD}[DEBUG]${RESET}   Flatten mode: $FLATTEN"
     echo -e "${BOLD}[DEBUG]${RESET}   Overwrite mode: $OVERWRITE"
 fi
+print_console_link "IBM Cloud Object Storage" "https://cloud.ibm.com/objectstorage/instances"
 echo " "

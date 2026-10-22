@@ -157,3 +157,4 @@ if [ "$DEBUG" = true ]; then
         fi
     done
 fi
+print_console_link "IBM Cloud VPC Floating IPs" "https://cloud.ibm.com/vpc/network/floatingIPs"

@@ -153,3 +153,4 @@ if [ "$DEBUG" = true ]; then
     echo -e "${BOLD}[DEBUG]${RESET}   User-specific settings: $USER_MFA_COUNT"
     echo -e "${BOLD}[DEBUG]${RESET}   MFA Required for all: $([ "$MFA_SETTING" = "TOTP4ALL" ] && echo "Yes" || echo "No")"
 fi
+print_console_link "IBM Cloud MFA Settings" "https://cloud.ibm.com/iam/settings"

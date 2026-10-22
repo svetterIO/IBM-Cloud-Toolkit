@@ -282,3 +282,4 @@ if [ "$DEBUG" = true ]; then
         fi
     done
 fi
+print_console_link "IBM Cloud VPC Security Groups" "https://cloud.ibm.com/vpc/network/securityGroups"

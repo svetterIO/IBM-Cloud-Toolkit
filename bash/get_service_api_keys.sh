@@ -319,3 +319,4 @@ fi
 
 echo " "
 echo "Completed Service API key extraction."
+print_console_link "IBM Cloud Service IDs & Service API Keys" "https://cloud.ibm.com/iam/serviceids"

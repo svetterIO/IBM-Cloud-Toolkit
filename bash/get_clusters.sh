@@ -139,3 +139,4 @@ if [[ $PUBLIC_COUNT -gt 0 ]]; then
 else
     echo -e "${BOLD}Clusters with public endpoint: 0${RESET}"
 fi
+print_console_link "IBM Cloud Kubernetes & OpenShift Clusters" "https://cloud.ibm.com/kubernetes/clusters"
