@@ -52,12 +52,19 @@ SEPARATOR = "=" * 82
 # ── Low-level CLI runner ──────────────────────────────────────────────────────
 
 def _run(args: list[str], *, capture: bool = True) -> subprocess.CompletedProcess:
-    """Run a command; returns CompletedProcess (stdout/stderr as str)."""
+    """Run a command; returns CompletedProcess (stdout/stderr as str).
+
+    Always decodes output as UTF-8 (the encoding used by the IBM Cloud CLI).
+    Unknown bytes are replaced with U+FFFD rather than raising an exception,
+    which prevents cp1252 / charmap UnicodeDecodeError crashes on Windows when
+    bucket keys or file paths contain non-ASCII characters.
+    """
     return subprocess.run(
         args,
         stdout=subprocess.PIPE if capture else None,
         stderr=subprocess.PIPE if capture else None,
-        text=True,
+        encoding="utf-8",
+        errors="replace",
     )
 
 
