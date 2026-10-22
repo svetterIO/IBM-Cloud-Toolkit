@@ -45,7 +45,7 @@ github.com/manotux/IBM-Cloud-Toolkit
 
 
 # Canonical mapping: action name -> (module_attr, script_filename, flag_set)
-# flag_set is one of: "common", "full_debug", "service_api", "users", "download"
+# flag_set is one of: "common", "full_debug", "service_api", "users", "list_files", "download"
 ACTIONS: dict[str, tuple[str, str, str]] = {
     "get_api_keys":          ("get_api_keys",          "get_api_keys.py",          "common"),
     "get_service_api_keys":  ("get_service_api_keys",  "get_service_api_keys.py",  "service_api"),
@@ -60,7 +60,7 @@ ACTIONS: dict[str, tuple[str, str, str]] = {
     "get_clusters":          ("get_clusters",           "get_clusters.py",          "full_debug"),
     "get_databases":         ("get_databases",          "get_databases.py",         "common"),
     "get_buckets":           ("get_buckets",            "get_buckets.py",           "common"),
-    "get_buckets_files":     ("get_buckets_files",      "get_buckets_files.py",     "common"),
+    "get_buckets_files":     ("get_buckets_files",      "get_buckets_files.py",     "list_files"),
     "get_security_groups":   ("get_security_groups",    "get_security_groups.py",   "common"),
     "get_code_engine":       ("get_code_engine",        "get_code_engine.py",       "full_debug"),
     "download_buckets_files":("download_buckets_files", "download_buckets_files.py","download"),
@@ -89,6 +89,8 @@ def parse_args(argv=None):
                    help="Full debug mode (unredacted tokens); requires -v")
     p.add_argument("-p", metavar="PARALLEL", type=int, default=10,
                    help="Parallel workers for get_users and get_service_api_keys (default: 10)")
+    p.add_argument("-n", metavar="LIST_ITEMS", type=int, default=100,
+                   help="Maximum file keys to list per bucket in get_buckets_files (default: 100)")
     p.add_argument("-m", metavar="MAX_ITEMS", type=int, default=None,
                    help="Maximum files to download per bucket (required to enable downloading)")
     p.add_argument("-f", action="store_true",
@@ -194,6 +196,8 @@ def _build_flags(args, flag_set: str) -> list[str]:
         return common + ["-p", str(args.p)]
     if flag_set == "users":
         return common + (["-d"] if args.d else []) + ["-p", str(args.p)]
+    if flag_set == "list_files":
+        return common + ["-m", str(args.n)]
     if flag_set == "download":
         flags = common + ["-m", str(args.m)]
         if args.f:
@@ -267,7 +271,6 @@ def main(argv=None):
 
     modules = _import_all()
 
-    # Ordered full run (get_buckets_files skipped by default – can be very slow)
     FULL_RUN_ORDER = [
         "get_api_keys",
         "get_service_api_keys",
@@ -282,9 +285,9 @@ def main(argv=None):
         "get_clusters",
         "get_databases",
         "get_buckets",
-        # "get_buckets_files",  # disabled by default (can be very slow)
         "get_security_groups",
         "get_code_engine",
+        "get_buckets_files",   # lists keys per bucket (default: -n 100 keys per bucket)
     ]
 
     for action in FULL_RUN_ORDER:
@@ -300,6 +303,7 @@ def main(argv=None):
         print(f"To download files from Object Storage buckets, re-run with {BOLD}-m MAX_ITEMS{RESET}:")
         print(f"  {BOLD}python python/ibm_cloud_enum.py -m 10{RESET}   (download up to 10 files per bucket)")
         print(f"  Add {BOLD}-f{RESET} to flatten paths (keep only filename).")
+        print(f"  Add {BOLD}-n N{RESET} to change the listing limit (current: {BOLD}{args.n}{RESET} keys per bucket).")
 
     print(" ")
     print(SEPARATOR)
@@ -317,6 +321,7 @@ def main(argv=None):
         print(f"  Output directory: {BOLD}{output_dir}{RESET}")
         if args.p != 10:
             print(f"  Parallel workers: {BOLD}{args.p}{RESET}")
+        print(f"  Bucket file listing limit: {BOLD}{args.n}{RESET} keys per bucket")
         if args.m is not None:
             print(f"  Max download items per bucket: {BOLD}{args.m}{RESET}")
         if args.f and args.m is not None:

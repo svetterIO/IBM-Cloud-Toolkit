@@ -29,6 +29,7 @@ OUTPUT_DIR_SET=false
 DEBUG=false
 DEBUG_FULL=false
 PARALLEL_WORKERS=10
+MAX_LIST_ITEMS=100
 MAX_DOWNLOAD_ITEMS=""
 FLATTEN_DOWNLOADS=false
 ACTION=""
@@ -40,7 +41,7 @@ get_buckets get_buckets_files get_security_groups get_code_engine download_bucke
 
 usage() {
     scriptname=$(basename "$0")
-    echo "Usage: ./$scriptname [ACTION] [-h] [-o OUTPUT_DIR] [-v] [-d] [-p PARALLEL] [-m MAX_ITEMS] [-f]"
+    echo "Usage: ./$scriptname [ACTION] [-h] [-o OUTPUT_DIR] [-v] [-d] [-p PARALLEL] [-n LIST_ITEMS] [-m MAX_ITEMS] [-f]"
     echo
     echo "Arguments:"
     echo "  ACTION          (optional) Run only one module instead of all, e.g.:"
@@ -56,6 +57,7 @@ usage() {
     echo "  -v              Enable debug mode for all scripts"
     echo "  -d              Enable full debug mode (requires -v, for scripts that support it)"
     echo "  -p PARALLEL     Number of parallel workers for get_users.sh and get_service_api_keys.sh (default: 10)"
+    echo "  -n LIST_ITEMS   Maximum file keys to list per bucket in get_buckets_files (default: 100)"
     echo "  -m MAX_ITEMS    Maximum number of files to download per bucket (required to enable downloading)"
     echo "  -f              Flatten downloaded files (strip directory path, keep only filename)"
     echo
@@ -65,6 +67,7 @@ usage() {
     echo "Scripts with full debug support (-d): get_custom_roles, get_users, get_user_policies,"
     echo "                                      get_mfa, get_clusters, get_code_engine"
     echo "Scripts with parallel support (-p): get_users, get_service_api_keys"
+    echo "Listing options (-n): get_buckets_files"
     echo "Download options (-m, -f): download_buckets_files"
 }
 
@@ -74,7 +77,7 @@ if [[ $# -gt 0 && "$1" != -* ]]; then
     shift
 fi
 
-while getopts ":ho:p:m:vdf" opt; do
+while getopts ":ho:p:n:m:vdf" opt; do
     case $opt in
         h)
             usage
@@ -92,6 +95,9 @@ while getopts ":ho:p:m:vdf" opt; do
             ;;
         p)
             PARALLEL_WORKERS="$OPTARG"
+            ;;
+        n)
+            MAX_LIST_ITEMS="$OPTARG"
             ;;
         m)
             MAX_DOWNLOAD_ITEMS="$OPTARG"
@@ -158,6 +164,8 @@ if [[ -n "$ACTION" ]]; then
             run_script "$srcdir/${ACTION}.sh" $FULL_DEBUG_FLAGS -p $PARALLEL_WORKERS ;;
         get_user_policies)
             run_script "$srcdir/${ACTION}.sh" $FULL_DEBUG_FLAGS ;;
+        get_buckets_files)
+            run_script "$srcdir/${ACTION}.sh" $COMMON_FLAGS -m $MAX_LIST_ITEMS ;;
         download_buckets_files)
             if [[ -z "$MAX_DOWNLOAD_ITEMS" ]]; then
                 failure "download_buckets_files requires -m MAX_ITEMS"
@@ -231,12 +239,12 @@ run_script "$srcdir/get_clusters.sh" $FULL_DEBUG_FLAGS
 run_script "$srcdir/get_databases.sh" $COMMON_FLAGS
 # get_buckets.sh: supports -v only
 run_script "$srcdir/get_buckets.sh" $COMMON_FLAGS
-# get_buckets_files.sh: supports -v only (disabled by default – can be very slow)
-# run_script "$srcdir/get_buckets_files.sh" $COMMON_FLAGS
 # get_security_groups.sh: supports -v only
 run_script "$srcdir/get_security_groups.sh" $COMMON_FLAGS
 # get_code_engine.sh: supports -v and -d
 run_script "$srcdir/get_code_engine.sh" $FULL_DEBUG_FLAGS
+# get_buckets_files.sh: list file keys per bucket (default: -n 100 keys per bucket)
+run_script "$srcdir/get_buckets_files.sh" $COMMON_FLAGS -m $MAX_LIST_ITEMS
 # download_buckets_files.sh: runs last, only when -m is explicitly provided
 if [[ -n "$MAX_DOWNLOAD_ITEMS" ]]; then
     DOWNLOAD_FLAGS="$COMMON_FLAGS -m $MAX_DOWNLOAD_ITEMS"
@@ -252,6 +260,7 @@ else
     scriptname=$(basename "$0")
     echo -e "  ${BOLD}./$scriptname -m 10${RESET}   (download up to 10 files per bucket)"
     echo -e "  Add ${BOLD}-f${RESET} to flatten paths (keep only filename)."
+    echo -e "  Add ${BOLD}-n N${RESET} to change the listing limit (current: ${BOLD}${MAX_LIST_ITEMS}${RESET} keys per bucket)."
 fi
 echo " "
 echo "${SEPARATOR}"
@@ -277,7 +286,8 @@ if [ "$DEBUG" = true ]; then
     if [ $PARALLEL_WORKERS -ne 10 ]; then
         echo -e "  Parallel workers: ${BOLD}$PARALLEL_WORKERS${RESET}"
     fi
-    if [ $MAX_DOWNLOAD_ITEMS -ne 10 ]; then
+    echo -e "  Bucket file listing limit: ${BOLD}${MAX_LIST_ITEMS}${RESET} keys per bucket"
+    if [[ -n "$MAX_DOWNLOAD_ITEMS" ]]; then
         echo -e "  Max download items per bucket: ${BOLD}$MAX_DOWNLOAD_ITEMS${RESET}"
     fi
     if [ "$FLATTEN_DOWNLOADS" = true ]; then
