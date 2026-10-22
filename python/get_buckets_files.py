@@ -3,6 +3,8 @@
 python/get_buckets_files.py
 
 Lists all files in all IBM Cloud Object Storage buckets.
+Bucket listings are fetched in parallel (default: 10 workers) to speed up
+accounts with many buckets.
 
 Output files:
   <output_dir>/buckets_files.txt  – text file with per-bucket file listings
@@ -13,6 +15,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -32,8 +35,51 @@ def parse_args(argv=None):
     p.add_argument("-o", metavar="OUTPUT_DIR", default="output")
     p.add_argument("-f", metavar="OUTPUT_FILE", default="buckets_files.txt")
     p.add_argument("-m", metavar="MAX_ITEMS", type=int, default=100)
+    p.add_argument("-p", metavar="MAX_PARALLEL", type=int, default=10,
+                   help="Parallel workers for bucket listing (default: 10)")
     p.add_argument("-v", action="store_true")
     return p.parse_args(argv)
+
+
+def _list_bucket(inst_name: str, bucket_name: str, bucket_region: str,
+                 max_items: int, debug: bool) -> dict:
+    """Fetch the object listing for one bucket and return a result dict."""
+    if debug:
+        print(f"{BOLD}[DEBUG]{RESET} Listing objects in bucket {bucket_name}")
+
+    result = _ibmcloud(
+        "cos", "list-objects-v2",
+        "--bucket", bucket_name,
+        "--region", bucket_region,
+        "--max-items", str(max_items),
+        "--output", "json",
+    )
+
+    if result.returncode != 0:
+        warning(f"Could not list files in bucket '{bucket_name}'.")
+        return {
+            "inst_name": inst_name,
+            "bucket_name": bucket_name,
+            "keys": None,          # signals failure
+            "truncated": False,
+            "count": 0,
+        }
+
+    try:
+        files_data = json.loads(result.stdout)
+        contents = files_data.get("Contents") or []
+        truncated = files_data.get("IsTruncated", False)
+    except json.JSONDecodeError:
+        contents = []
+        truncated = False
+
+    return {
+        "inst_name": inst_name,
+        "bucket_name": bucket_name,
+        "keys": [obj.get("Key", "") for obj in contents],
+        "truncated": truncated,
+        "count": len(contents),
+    }
 
 
 def main(argv=None):
@@ -46,7 +92,8 @@ def main(argv=None):
 
     print(" ")
     print(SEPARATOR)
-    print(f"Enumerating {ORANGE}{BOLD}files{RESET} in all IBM Cloud Object Storage buckets...")
+    print(f"Enumerating {ORANGE}{BOLD}files{RESET} in all IBM Cloud Object Storage buckets"
+          f" (using {args.p} parallel workers)...")
     print(" ")
 
     if args.v:
@@ -66,10 +113,8 @@ def main(argv=None):
     except json.JSONDecodeError:
         failure("Failed to parse COS instances response.")
 
-    total_buckets = 0
-    total_files = 0
-    lines: list[str] = []
-
+    # ── Collect all (inst_name, bucket_name, bucket_region) tuples ────────────
+    all_buckets: list[tuple[str, str, str]] = []
     for instance in instances:
         inst_name = instance.get("name", "")
         inst_crn = instance.get("crn", "")
@@ -92,47 +137,73 @@ def main(argv=None):
             continue
 
         for bucket in buckets:
-            bucket_name = bucket.get("Name", "")
-            bucket_region = bucket.get("LocationConstraint", "")
-            lines.append(f"## Bucket {inst_name}/{bucket_name} ##")
-            total_buckets += 1
+            all_buckets.append((
+                inst_name,
+                bucket.get("Name", ""),
+                bucket.get("LocationConstraint", ""),
+            ))
 
-            if args.v:
-                print(f"{BOLD}[DEBUG]{RESET} Listing objects in bucket {bucket_name}")
+    total_buckets = len(all_buckets)
+    if args.v:
+        print(f"{BOLD}[DEBUG]{RESET} Found {total_buckets} bucket(s) across all instances")
 
-            files_result = _ibmcloud(
-                "cos", "list-objects-v2",
-                "--bucket", bucket_name,
-                "--region", bucket_region,
-                "--max-items", str(args.m),
-                "--output", "json",
-            )
-            if files_result.returncode != 0:
-                warning(f"Could not list files in bucket '{bucket_name}'.")
-                lines.append("(No files found)")
-                lines.append("")
-                continue
+    print(f"{BOLD}Total buckets found: {total_buckets}{RESET}")
+    if total_buckets == 0:
+        print("No buckets found.")
+        output_path.write_text("", encoding="utf-8")
+        return
 
-            try:
-                files_data = json.loads(files_result.stdout)
-                contents = files_data.get("Contents") or []
-            except json.JSONDecodeError:
-                lines.append("(No files found)")
-                lines.append("")
-                continue
+    print(f"Listing objects in {total_buckets} bucket(s)"
+          f" with {args.p} parallel worker(s)...")
 
-            if not contents:
-                lines.append("(No files found)")
-            else:
-                total_files += len(contents)
-                for obj in contents:
-                    lines.append(obj.get("Key", ""))
-            lines.append("")
+    # ── Parallel bucket listing ───────────────────────────────────────────────
+    # Preserve insertion order for deterministic output: use a dict keyed by
+    # submission order, filled as futures complete.
+    order: list[int] = list(range(total_buckets))
+    results: dict[int, dict] = {}
+
+    with ThreadPoolExecutor(max_workers=args.p) as executor:
+        future_to_idx = {
+            executor.submit(
+                _list_bucket,
+                inst, bname, bregion, args.m, args.v
+            ): idx
+            for idx, (inst, bname, bregion) in enumerate(all_buckets)
+        }
+        done = 0
+        for future in as_completed(future_to_idx):
+            idx = future_to_idx[future]
+            results[idx] = future.result()
+            done += 1
+            if not args.v and done % 5 == 0:
+                print(f"\rProcessed: {done}/{total_buckets} buckets...",
+                      end="", flush=True)
+
+    if not args.v:
+        print(f"\rProcessed: {total_buckets}/{total_buckets} buckets... Done!")
+
+    # ── Assemble output in original bucket order ──────────────────────────────
+    lines: list[str] = []
+    total_files = 0
+
+    for idx in order:
+        r = results[idx]
+        lines.append(f"## Bucket {r['inst_name']}/{r['bucket_name']} ##")
+        if r["keys"] is None:
+            lines.append("(Error listing bucket)")
+        elif not r["keys"]:
+            lines.append("(No files found)")
+        else:
+            total_files += r["count"]
+            if r["truncated"]:
+                lines.append(f"(Showing first {args.m} of more objects)")
+            lines.extend(r["keys"])
+        lines.append("")
 
     if args.v:
         print()
         print(f"{BOLD}[DEBUG]{RESET} Total buckets: {total_buckets}")
-        print(f"{BOLD}[DEBUG]{RESET} Total files: {total_files}")
+        print(f"{BOLD}[DEBUG]{RESET} Total files listed: {total_files}")
 
     print()
     output_path.write_text("\n".join(lines), encoding="utf-8")

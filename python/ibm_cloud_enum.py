@@ -60,7 +60,7 @@ ACTIONS: dict[str, tuple[str, str, str]] = {
     "get_clusters":          ("get_clusters",           "get_clusters.py",          "full_debug"),
     "get_databases":         ("get_databases",          "get_databases.py",         "common"),
     "get_buckets":           ("get_buckets",            "get_buckets.py",           "common"),
-    "get_buckets_files":     ("get_buckets_files",      "get_buckets_files.py",     "list_files"),
+    "get_buckets_files":     ("get_buckets_files",      "get_buckets_files.py",     "buckets_files"),
     "get_security_groups":   ("get_security_groups",    "get_security_groups.py",   "common"),
     "get_code_engine":       ("get_code_engine",        "get_code_engine.py",       "full_debug"),
     "download_buckets_files":("download_buckets_files", "download_buckets_files.py","download"),
@@ -91,6 +91,8 @@ def parse_args(argv=None):
                    help="Parallel workers for get_users and get_service_api_keys (default: 10)")
     p.add_argument("-n", metavar="LIST_ITEMS", type=int, default=100,
                    help="Maximum file keys to list per bucket in get_buckets_files (default: 100)")
+    p.add_argument("-q", metavar="LIST_PARALLEL", type=int, default=10,
+                   help="Parallel workers for get_buckets_files listing (default: 10)")
     p.add_argument("-m", metavar="MAX_ITEMS", type=int, default=None,
                    help="Maximum files to download per bucket (required to enable downloading)")
     p.add_argument("-f", action="store_true",
@@ -196,8 +198,8 @@ def _build_flags(args, flag_set: str) -> list[str]:
         return common + ["-p", str(args.p)]
     if flag_set == "users":
         return common + (["-d"] if args.d else []) + ["-p", str(args.p)]
-    if flag_set == "list_files":
-        return common + ["-m", str(args.n)]
+    if flag_set == "buckets_files":
+        return common + ["-m", str(args.n), "-p", str(args.q)]
     if flag_set == "download":
         flags = common + ["-m", str(args.m)]
         if args.f:
@@ -321,7 +323,8 @@ def main(argv=None):
         print(f"  Output directory: {BOLD}{output_dir}{RESET}")
         if args.p != 10:
             print(f"  Parallel workers: {BOLD}{args.p}{RESET}")
-        print(f"  Bucket file listing limit: {BOLD}{args.n}{RESET} keys per bucket")
+        print(f"  Bucket file listing: {BOLD}{args.n}{RESET} keys per bucket, "
+              f"{BOLD}{args.q}{RESET} parallel worker(s)")
         if args.m is not None:
             print(f"  Max download items per bucket: {BOLD}{args.m}{RESET}")
         if args.f and args.m is not None:
