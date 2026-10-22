@@ -166,8 +166,9 @@ fetch_service_api_keys() {
     if [ "$debug_mode" = "true" ]; then
         echo "[DEBUG] Service \"$service_name\": Found $key_count API key(s)" >&2
     fi
-    # Add service info to keys
-    local keys=$(echo "$api_keys_json" | jq --arg svc_id "$service_id" --arg svc_name "$service_name" '[.[] | . + {service_id: $svc_id, service_name: $svc_name}]')
+    # Add service info and browser URL to keys
+    local keys=$(echo "$api_keys_json" | jq --arg svc_id "$service_id" --arg svc_name "$service_name" \
+        '[.[] | . + {service_id: $svc_id, service_name: $svc_name, browser_url: ("https://cloud.ibm.com/iam/serviceids/" + $svc_id + "?tab=apikeys")}]')
     echo "$keys" > "${temp_dir}/${service_index}.json"
 }
 

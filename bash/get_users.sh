@@ -326,4 +326,7 @@ if [ "$DEBUG" = true ]; then
     echo -e "${BOLD}[DEBUG]${RESET}   Pages fetched: $PAGE_COUNT"
     echo -e "${BOLD}[DEBUG]${RESET}   Parallel workers: $MAX_PARALLEL"
 fi
-print_console_link "IBM Cloud Users" "https://cloud.ibm.com/iam/users"
+# Navigate to: IBM Cloud Console > Manage > Access (IAM) > Users
+# Use the Status filter to find: "Pending" (invite not yet accepted),
+# "Invite expired" (invitation lapsed), or "Invalid" (account issue) users.
+print_console_link "Manage users" "https://cloud.ibm.com/iam/users"

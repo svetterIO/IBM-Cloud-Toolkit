@@ -113,4 +113,9 @@ if [ "$DEBUG" = true ]; then
     echo -e "${BOLD}[DEBUG]${RESET}   Total regions: $TOTAL_REGIONS"
     echo -e "${BOLD}[DEBUG]${RESET}   Output file: $OUTPUT_PATH"
 fi
-print_console_link "IBM Cloud Regions" "https://cloud.ibm.com/docs/overview?topic=overview-locations"
+# There is no region list page in the IBM Cloud UI. Use these instead:
+# - Docs: official list of all available regions and data centres.
+# - Resource list: filter by Location to see which resources exist in each region,
+#   which helps identify resources provisioned in unexpected or disallowed regions.
+print_console_link "IBM Cloud regions reference (docs)" "https://cloud.ibm.com/docs/overview?topic=overview-locations"
+print_console_link "Resource list (filter by Location to audit regions)" "https://cloud.ibm.com/resources"
