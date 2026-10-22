@@ -26,7 +26,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from utils import (
     BOLD, ORANGE, RESET, SEPARATOR, YELLOW,
     _ibmcloud, ensure_output_dir, failure, ibmcloud_access_token,
-    ibmcloud_get, require_ibmcloud_ce, require_ibmcloud_login, warning,
+    ibmcloud_get, print_console_link, require_ibmcloud_ce,
+    require_ibmcloud_login, warning,
 )
 
 
@@ -211,6 +212,8 @@ def main(argv=None):
     print()
     print("Review Env Vars and ConfigMaps for secrets using tools like "
           "TruffleHog/detect-secrets or manually.")
+    print()
+    print_console_link("Manage Code Engine projects", "https://cloud.ibm.com/codeengine/projects")
 
     # Restore clean target state
     _ibmcloud("target", "--unset-resource-group", "-q")

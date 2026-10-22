@@ -24,7 +24,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from utils import (
     BOLD, ORANGE, RESET, SEPARATOR, YELLOW,
     _ibmcloud, days_since_iso, ensure_output_dir, failure,
-    require_ibmcloud_login,
+    print_console_link, require_ibmcloud_login,
 )
 
 
@@ -147,6 +147,8 @@ def main(argv=None):
         print(f"{BOLD}Good:{RESET} All Service API keys have been rotated within the last {args.d} days.")
 
     print("\nCompleted Service API key extraction.")
+    print()
+    print_console_link("Manage Service IDs and their API keys", "https://cloud.ibm.com/iam/serviceids")
 
 
 if __name__ == "__main__":

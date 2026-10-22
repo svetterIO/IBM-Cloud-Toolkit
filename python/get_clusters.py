@@ -22,7 +22,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from utils import (
     BOLD, ORANGE, RESET, SEPARATOR,
     ensure_output_dir, failure, ibmcloud_access_token,
-    ibmcloud_get, require_ibmcloud_login,
+    ibmcloud_get, print_console_link, require_ibmcloud_login,
 )
 
 
@@ -103,6 +103,8 @@ def main(argv=None):
         print(f"Clusters with public endpoint saved to: {BOLD}{public_path}{RESET}")
     else:
         print(f"{BOLD}Clusters with public endpoint: 0{RESET}")
+    print()
+    print_console_link("Manage Kubernetes / OpenShift clusters", "https://cloud.ibm.com/kubernetes/clusters")
 
 
 if __name__ == "__main__":

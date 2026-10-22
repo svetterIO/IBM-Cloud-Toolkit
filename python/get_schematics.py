@@ -19,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from utils import (
     BOLD, ORANGE, RESET, SEPARATOR, YELLOW,
-    _ibmcloud, ensure_output_dir,
+    _ibmcloud, ensure_output_dir, print_console_link,
     require_ibmcloud_login, require_ibmcloud_schematics, warning,
 )
 
@@ -116,6 +116,8 @@ def main(argv=None):
     print()
     print(f"{YELLOW}{BOLD}Security Note:{RESET} Review this file for secrets in variables "
           "using tools like TruffleHog/detect-secrets or manually.")
+    print()
+    print_console_link("Manage Schematics workspaces", "https://cloud.ibm.com/schematics/workspaces")
 
 
 if __name__ == "__main__":

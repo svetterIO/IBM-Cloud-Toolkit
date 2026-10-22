@@ -18,7 +18,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from utils import (
     BOLD, ORANGE, RESET, SEPARATOR,
-    ensure_output_dir, failure, get_regions, require_ibmcloud_login,
+    ensure_output_dir, failure, get_regions,
+    print_console_link, require_ibmcloud_login,
 )
 
 
@@ -63,6 +64,8 @@ def main(argv=None):
     output_path.write_text("\n".join(regions) + "\n", encoding="utf-8")
     print()
     print(f"All regions saved to: {BOLD}{output_path}{RESET}")
+    print()
+    print_console_link("View IBM Cloud regions", "https://cloud.ibm.com/docs/overview?topic=overview-locations")
 
 
 if __name__ == "__main__":

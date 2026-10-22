@@ -20,7 +20,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from utils import (
     BOLD, ORANGE, RESET, SEPARATOR,
     ensure_output_dir, failure, ibmcloud_access_token,
-    ibmcloud_account_id, ibmcloud_get, require_ibmcloud_login,
+    ibmcloud_account_id, ibmcloud_get, print_console_link,
+    require_ibmcloud_login,
 )
 
 
@@ -85,6 +86,8 @@ def main(argv=None):
     print(f"Output with all custom roles saved to: {BOLD}{output_path}{RESET}")
     print(" ")
     print("Review custom roles for excessive privileges.")
+    print()
+    print_console_link("Manage custom IAM roles", "https://cloud.ibm.com/iam/roles")
 
 
 if __name__ == "__main__":

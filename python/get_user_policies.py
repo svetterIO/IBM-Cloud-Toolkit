@@ -20,7 +20,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from utils import (
     BOLD, ORANGE, RESET, SEPARATOR,
     ensure_output_dir, failure, ibmcloud_access_token,
-    ibmcloud_account_id, ibmcloud_get, require_ibmcloud_login,
+    ibmcloud_account_id, ibmcloud_get, print_console_link,
+    require_ibmcloud_login,
 )
 
 
@@ -83,6 +84,8 @@ def main(argv=None):
         print(f"Users with direct access policies saved to: {BOLD}{output_path}{RESET}")
     else:
         print("No users with direct access policies found.")
+    print()
+    print_console_link("Review user access policies", "https://cloud.ibm.com/iam/users")
 
 
 if __name__ == "__main__":

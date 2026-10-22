@@ -22,7 +22,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from utils import (
     BOLD, CYAN, ORANGE, RESET, SEPARATOR, YELLOW,
-    _ibmcloud, ensure_output_dir, get_regions,
+    _ibmcloud, ensure_output_dir, get_regions, print_console_link,
     require_ibmcloud_is, require_ibmcloud_login,
     require_ibmcloud_sl, warning,
 )
@@ -180,6 +180,8 @@ def main(argv=None):
     else:
         print(f"{BOLD}Total Classic Security Groups: 0{RESET}")
         print("No Classic Infrastructure Security Groups found.")
+    print()
+    print_console_link("Manage VPC Security Groups", "https://cloud.ibm.com/vpc/network/securityGroups")
 
 
 if __name__ == "__main__":

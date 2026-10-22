@@ -20,7 +20,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from utils import (
     BOLD, CYAN, ORANGE, RESET, SEPARATOR, YELLOW,
     ensure_output_dir, failure, ibmcloud_access_token,
-    ibmcloud_account_id, ibmcloud_get, require_ibmcloud_login,
+    ibmcloud_account_id, ibmcloud_get, print_console_link,
+    require_ibmcloud_login,
 )
 
 
@@ -95,6 +96,8 @@ def main(argv=None):
     print(" ")
     print(f"Account identity settings saved to: {BOLD}{output_path}{RESET}")
 
+    print()
+    print_console_link("Account IAM settings (MFA)", "https://cloud.ibm.com/iam/settings")
     if args.v:
         print()
         print(f"{BOLD}[DEBUG]{RESET} Summary:")

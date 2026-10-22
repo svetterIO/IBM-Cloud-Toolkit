@@ -19,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from utils import (
     BOLD, ORANGE, RESET, SEPARATOR,
-    _ibmcloud, ensure_output_dir, failure,
+    _ibmcloud, ensure_output_dir, failure, print_console_link,
     require_ibmcloud_cos, require_ibmcloud_login,
 )
 
@@ -113,6 +113,8 @@ def main(argv=None):
     print()
     output_path.write_text(json.dumps(all_buckets, indent=2), encoding="utf-8")
     print(f"All buckets saved to: {BOLD}{output_path}{RESET}")
+    print()
+    print_console_link("Manage Object Storage instances", "https://cloud.ibm.com/objectstorage/instances")
 
 
 if __name__ == "__main__":

@@ -19,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from utils import (
     BOLD, ORANGE, RESET, SEPARATOR,
     _ibmcloud, ensure_output_dir, get_regions,
-    require_ibmcloud_is, require_ibmcloud_login, warning,
+    print_console_link, require_ibmcloud_is, require_ibmcloud_login, warning,
 )
 
 
@@ -107,6 +107,8 @@ def main(argv=None):
     output_path.write_text("\n".join(all_ips) + "\n", encoding="utf-8")
     print()
     print(f"All floating IPs saved to: {BOLD}{output_path}{RESET}")
+    print()
+    print_console_link("Manage Floating IPs (VPC)", "https://cloud.ibm.com/vpc/network/floatingIPs")
 
 
 if __name__ == "__main__":

@@ -21,7 +21,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from utils import (
     BOLD, ORANGE, RESET, SEPARATOR,
-    _ibmcloud, ensure_output_dir,
+    _ibmcloud, ensure_output_dir, print_console_link,
     require_ibmcloud_cdb, require_ibmcloud_login, warning,
 )
 
@@ -160,6 +160,8 @@ def main(argv=None):
         print(f"Databases with public endpoint saved to: {BOLD}{public_path}{RESET}")
     else:
         print(f"{BOLD}Databases with public endpoint: 0{RESET}")
+    print()
+    print_console_link("Manage Cloud Databases", "https://cloud.ibm.com/databases")
 
 
 if __name__ == "__main__":

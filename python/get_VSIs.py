@@ -22,7 +22,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from utils import (
     BOLD, ORANGE, RESET, SEPARATOR, YELLOW,
     _ibmcloud, ensure_output_dir, get_regions,
-    require_ibmcloud_is, require_ibmcloud_login, warning,
+    print_console_link, require_ibmcloud_is, require_ibmcloud_login, warning,
 )
 
 
@@ -155,6 +155,8 @@ def main(argv=None):
     else:
         print()
         print(f"{BOLD}Good:{RESET} No VSIs with metadata enabled found.")
+    print()
+    print_console_link("Manage Virtual Server Instances (VPC)", "https://cloud.ibm.com/vpc/compute/vs")
 
 
 if __name__ == "__main__":

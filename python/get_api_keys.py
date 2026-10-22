@@ -23,7 +23,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from utils import (
     BOLD, ORANGE, RESET, SEPARATOR,
     _ibmcloud, days_since_iso, ensure_output_dir, failure,
-    require_ibmcloud_login,
+    print_console_link, require_ibmcloud_login,
 )
 
 
@@ -98,6 +98,8 @@ def main(argv=None):
     else:
         print(f"{BOLD}API keys not rotated in the last {args.d} days: 0{RESET}")
         print(f"All API keys have been rotated within the last {BOLD}{args.d} days{RESET}.")
+    print()
+    print_console_link("Manage API keys", "https://cloud.ibm.com/iam/apikeys")
 
 
 if __name__ == "__main__":

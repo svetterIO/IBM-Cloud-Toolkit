@@ -197,6 +197,12 @@ def warning(msg: str) -> None:
     print(f"{BOLD}WARNING: {RESET}{msg}")
 
 
+def print_console_link(label: str, url: str) -> None:
+    """Print a styled IBM Cloud console link at the end of a module run."""
+    print(f"{CYAN}IBM Cloud Console:{RESET} {label}")
+    print(f"  {BOLD}{url}{RESET}")
+
+
 def ensure_output_dir(path: str) -> Path:
     """Create the output directory if it does not exist."""
     p = Path(path)
