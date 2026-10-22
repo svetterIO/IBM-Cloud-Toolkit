@@ -105,6 +105,5 @@ if [[ $USERS_FOUND -eq 1 ]]; then
 else
     echo "No users with direct access policies found."
 fi
-# Navigate to: IBM Cloud Console > Manage > Access (IAM) > Users
-# Select the user > Access tab > Access policies to review their direct policy assignments.
-print_console_link "Review user access policies" "https://cloud.ibm.com/iam/users"
+print_console_link "Review user access policies" "https://cloud.ibm.com/iam/users" \
+    "IBM Cloud Console > Manage > Access (IAM) > Users > [select user] > Access > Access policies"

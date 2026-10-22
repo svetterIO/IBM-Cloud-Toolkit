@@ -153,5 +153,5 @@ if [ "$DEBUG" = true ]; then
     echo -e "${BOLD}[DEBUG]${RESET}   User-specific settings: $USER_MFA_COUNT"
     echo -e "${BOLD}[DEBUG]${RESET}   MFA Required for all: $([ "$MFA_SETTING" = "TOTP4ALL" ] && echo "Yes" || echo "No")"
 fi
-# Navigate to: IBM Cloud Console > Manage > Access (IAM) > Settings > Authentication tab
-print_console_link "Account IAM settings (MFA)" "https://cloud.ibm.com/iam/settings?tab=authentication"
+print_console_link "Account IAM settings (MFA)" "https://cloud.ibm.com/iam/settings?tab=authentication" \
+    "IBM Cloud Console > Manage > Access (IAM) > Settings > Authentication tab"

@@ -181,5 +181,5 @@ if [ "$DEBUG" = true ]; then
         echo -e "${BOLD}[DEBUG]${RESET}     $region: ${REGION_WORKSPACE_COUNTS[$region]:-0}"
     done
 fi
-# Navigate to: IBM Cloud Console > Schematics > Workspaces
-print_console_link "Manage Schematics workspaces" "https://cloud.ibm.com/schematics/workspaces"
+print_console_link "Manage Schematics workspaces" "https://cloud.ibm.com/schematics/workspaces" \
+    "IBM Cloud Console > Schematics > Workspaces"

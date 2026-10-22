@@ -166,10 +166,9 @@ def main(argv=None):
         print()
         print(f"{BOLD}Good:{RESET} No inactive users found.")
     print()
-    # Navigate to: IBM Cloud Console > Manage > Access (IAM) > Users
-    # Use the Status filter to find: "Pending" (invite not yet accepted),
-    # "Invite expired" (invitation lapsed), or "Invalid" (account issue) users.
-    print_console_link("Manage users", "https://cloud.ibm.com/iam/users")
+    print_console_link("Manage users", "https://cloud.ibm.com/iam/users",
+                       "IBM Cloud Console > Manage > Access (IAM) > Users"
+                       " — Status filter: Pending / Invite expired / Invalid")
 
 
 if __name__ == "__main__":

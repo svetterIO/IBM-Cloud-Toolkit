@@ -119,13 +119,19 @@ warning() {
 }
 
 # Print a clickable IBM Cloud console link at the end of a module's output.
-# Usage: print_console_link "Label" "https://cloud.ibm.com/..."
+# Usage: print_console_link "Label" "https://cloud.ibm.com/..." ["Navigation path"]
+# The optional third argument is printed in blue in parentheses after the URL.
 print_console_link() {
     local label="$1"
     local url="$2"
+    local nav="${3:-}"
     echo " "
     echo -e "${CYAN}${BOLD}Open in IBM Cloud Console:${RESET} ${label}"
-    echo -e "  ${CYAN}${url}${RESET}"
+    if [[ -n "$nav" ]]; then
+        echo -e "  ${CYAN}${url}${RESET}  \033[34m(${nav})\033[0m"
+    else
+        echo -e "  ${CYAN}${url}${RESET}"
+    fi
 }
 
 get_regions() {

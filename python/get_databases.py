@@ -161,8 +161,8 @@ def main(argv=None):
     else:
         print(f"{BOLD}Databases with public endpoint: 0{RESET}")
     print()
-    # Navigate to: IBM Cloud Console > Databases (resources overview)
-    print_console_link("Manage Cloud Databases", "https://cloud.ibm.com/databases-overview/resources")
+    print_console_link("Manage Cloud Databases", "https://cloud.ibm.com/databases-overview/resources",
+                       "IBM Cloud Console > Databases")
 
 
 if __name__ == "__main__":

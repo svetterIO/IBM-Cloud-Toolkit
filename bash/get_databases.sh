@@ -236,5 +236,5 @@ if [ "$DEBUG" = true ]; then
     echo -e "${BOLD}[DEBUG]${RESET}   Total: $TOTAL_DBS"
     echo -e "${BOLD}[DEBUG]${RESET}   Public Endpoints: $PUBLIC_COUNT"
 fi
-# Navigate to: IBM Cloud Console > Databases (resources overview)
-print_console_link "Manage Cloud Databases" "https://cloud.ibm.com/databases-overview/resources"
+print_console_link "Manage Cloud Databases" "https://cloud.ibm.com/databases-overview/resources" \
+    "IBM Cloud Console > Databases"

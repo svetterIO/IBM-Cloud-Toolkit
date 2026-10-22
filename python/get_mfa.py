@@ -97,8 +97,8 @@ def main(argv=None):
     print(f"Account identity settings saved to: {BOLD}{output_path}{RESET}")
 
     print()
-    # Navigate to: IBM Cloud Console > Manage > Access (IAM) > Settings > Authentication tab
-    print_console_link("Account IAM settings (MFA)", "https://cloud.ibm.com/iam/settings?tab=authentication")
+    print_console_link("Account IAM settings (MFA)", "https://cloud.ibm.com/iam/settings?tab=authentication",
+                       "IBM Cloud Console > Manage > Access (IAM) > Settings > Authentication tab")
     if args.v:
         print()
         print(f"{BOLD}[DEBUG]{RESET} Summary:")

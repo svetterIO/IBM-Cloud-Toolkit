@@ -156,8 +156,8 @@ def main(argv=None):
         print()
         print(f"{BOLD}Good:{RESET} No VSIs with metadata enabled found.")
     print()
-    # Navigate to: IBM Cloud Console > VPC Infrastructure > Compute > Virtual server instances
-    print_console_link("Manage Virtual Server Instances (VPC Infrastructure)", "https://cloud.ibm.com/infrastructure/compute/vs")
+    print_console_link("Manage Virtual Server Instances", "https://cloud.ibm.com/infrastructure/compute/vs",
+                       "IBM Cloud Console > VPC Infrastructure > Compute > Virtual server instances")
 
 
 if __name__ == "__main__":

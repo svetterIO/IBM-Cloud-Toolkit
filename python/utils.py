@@ -197,10 +197,20 @@ def warning(msg: str) -> None:
     print(f"{BOLD}WARNING: {RESET}{msg}")
 
 
-def print_console_link(label: str, url: str) -> None:
-    """Print a styled IBM Cloud console link at the end of a module run."""
+def print_console_link(label: str, url: str, nav: str = "") -> None:
+    """Print a styled IBM Cloud console link at the end of a module run.
+
+    Args:
+        label: Short description shown on the header line.
+        url:   The console URL.
+        nav:   Optional navigation path shown in blue in parentheses after the URL,
+               e.g. "IBM Cloud Console > IAM > Settings > Authentication tab".
+    """
     print(f"{CYAN}IBM Cloud Console:{RESET} {label}")
-    print(f"  {BOLD}{url}{RESET}")
+    if nav:
+        print(f"  {BOLD}{url}{RESET}  {BLUE}({nav}){RESET}")
+    else:
+        print(f"  {BOLD}{url}{RESET}")
 
 
 def ensure_output_dir(path: str) -> Path:

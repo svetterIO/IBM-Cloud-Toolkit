@@ -157,5 +157,5 @@ if [ "$DEBUG" = true ]; then
         fi
     done
 fi
-# Navigate to: IBM Cloud Console > VPC Infrastructure > Network > Floating IPs
-print_console_link "Manage Floating IPs (VPC Infrastructure)" "https://cloud.ibm.com/infrastructure/network/floatingIPs"
+print_console_link "Manage Floating IPs" "https://cloud.ibm.com/infrastructure/network/floatingIPs" \
+    "IBM Cloud Console > VPC Infrastructure > Network > Floating IPs"

@@ -223,5 +223,5 @@ if [ "$DEBUG" = true ]; then
         fi
     done
 fi
-# Navigate to: IBM Cloud Console > VPC Infrastructure > Compute > Virtual server instances
-print_console_link "Manage Virtual Server Instances (VPC Infrastructure)" "https://cloud.ibm.com/infrastructure/compute/vs"
+print_console_link "Manage Virtual Server Instances" "https://cloud.ibm.com/infrastructure/compute/vs" \
+    "IBM Cloud Console > VPC Infrastructure > Compute > Virtual server instances"
