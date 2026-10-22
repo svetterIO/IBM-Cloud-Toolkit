@@ -122,6 +122,11 @@ while getopts ":ho:p:n:q:m:vdf" opt; do
             ;;
     esac
 done
+# Shift past all recognised options; anything remaining is module-specific extra flags.
+# These are passed straight through to the module in single-action mode.
+shift $((OPTIND - 1))
+MODULE_EXTRA_ARGS=("$@")
+
 # Check if -d is used without -v
 if [ "$DEBUG_FULL" = true ] && [ "$DEBUG" = false ]; then
     echo "Error: -d flag requires -v flag to be set" >&2
@@ -159,28 +164,25 @@ if [[ -n "$ACTION" ]]; then
         echo "Available actions: $(echo $VALID_ACTIONS | tr '\n' ' ')" >&2
         exit 1
     fi
-    # Build flags for this action and run it
-    case "$ACTION" in
-        get_service_api_keys)
-            run_script "$srcdir/${ACTION}.sh" $COMMON_FLAGS -p $PARALLEL_WORKERS ;;
-        get_custom_roles|get_mfa|get_clusters|get_code_engine)
-            run_script "$srcdir/${ACTION}.sh" $FULL_DEBUG_FLAGS ;;
-        get_users)
-            run_script "$srcdir/${ACTION}.sh" $FULL_DEBUG_FLAGS -p $PARALLEL_WORKERS ;;
-        get_user_policies)
-            run_script "$srcdir/${ACTION}.sh" $FULL_DEBUG_FLAGS ;;
-        get_buckets_files)
-            run_script "$srcdir/${ACTION}.sh" $COMMON_FLAGS -m $MAX_LIST_ITEMS -p $LIST_PARALLEL ;;
-        download_buckets_files)
-            if [[ -z "$MAX_DOWNLOAD_ITEMS" ]]; then
-                failure "download_buckets_files requires -m MAX_ITEMS"
-            fi
-            DL_FLAGS="$COMMON_FLAGS -m $MAX_DOWNLOAD_ITEMS"
-            [ "$FLATTEN_DOWNLOADS" = true ] && DL_FLAGS="$DL_FLAGS -f"
-            run_script "$srcdir/${ACTION}.sh" $DL_FLAGS ;;
-        *)
-            run_script "$srcdir/${ACTION}.sh" $COMMON_FLAGS ;;
-    esac
+
+    # Show IBM Cloud account info
+    ACCOUNT_JSON=$(ibmcloud account show --output json 2>/dev/null)
+    TARGET_JSON=$(ibmcloud target --output json 2>/dev/null)
+    ACCOUNT_NAME=$(echo "$ACCOUNT_JSON"  | jq -r '.name // "-"' 2>/dev/null || echo "-")
+    ACCOUNT_ID=$(echo "$ACCOUNT_JSON"    | jq -r '.account_id // "-"' 2>/dev/null || echo "-")
+    SOFTLAYER_ID=$(echo "$ACCOUNT_JSON"  | jq -r '.ims_account_id // "-"' 2>/dev/null || echo "-")
+    USER_EMAIL=$(echo "$TARGET_JSON"     | jq -r '.user.user_email // "-"' 2>/dev/null || echo "-")
+    echo -e "${ORANGE}${BOLD}IBM Cloud Account:${RESET}"
+    echo -e "· ${BOLD}Account Name:${RESET} $ACCOUNT_NAME"
+    echo -e "· ${BOLD}Account ID / Softlayer Account:${RESET} $ACCOUNT_ID - $SOFTLAYER_ID"
+    echo -e "· ${BOLD}User Email:${RESET} $USER_EMAIL"
+    echo
+
+    # Pass through runner-level flags (-o, -v) and any extra module-specific
+    # flags the user typed after ACTION (e.g. -p 20 -m 50).
+    PASSTHROUGH=($COMMON_FLAGS "${MODULE_EXTRA_ARGS[@]}")
+    run_script "$srcdir/${ACTION}.sh" "${PASSTHROUGH[@]}"
+
     echo " "
     echo "${SEPARATOR}"
     if [ "$OUTPUT_DIR_SET" = true ]; then

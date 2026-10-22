@@ -68,13 +68,75 @@ ACTIONS: dict[str, tuple[str, str, str]] = {
 
 
 def parse_args(argv=None):
+    """Two-phase parse.
+
+    Phase 1: peek at argv to detect whether an ACTION was given.
+
+    - No action  → full-run mode: parse all runner flags normally.
+    - Action given → single-action mode: parse only -o/-v (runner-level flags
+      that always apply), leave everything else as module pass-through extras.
+      This prevents runner flags like -p/-m from silently swallowing flags that
+      were meant for the module (e.g. `get_buckets_files -p 20 -m 50`).
+    """
+    argv = sys.argv[1:] if argv is None else list(argv)
+
+    # Detect whether a known action name appears in argv (before any '--').
+    # We scan carefully: skip flag arguments together with their values so that
+    # e.g. "-p 5" doesn't cause "5" to be mistaken for an action name.
+    FLAGS_WITH_VALUE = {"-o", "-p", "-n", "-q", "-m"}
+    action = None
+    i = 0
+    while i < len(argv):
+        tok = argv[i]
+        if tok == "--":
+            break
+        if tok in FLAGS_WITH_VALUE:
+            i += 2   # skip flag + its value
+            continue
+        if tok.startswith("-"):
+            i += 1   # boolean flag, no value
+            continue
+        # First bare word is the action candidate
+        if tok in ACTIONS:
+            action = tok
+        break
+
+    desc_base = (
+        "IBM Cloud ToolKit – run all enumeration modules, or a single one.\n\n"
+        "When ACTION is given, all remaining flags are forwarded as-is to that\n"
+        "module (same as calling the script directly).\n\n"
+        "Available actions (same names as the underlying scripts):\n  "
+        + "\n  ".join(sorted(ACTIONS))
+    )
+
+    if action is not None:
+        # Single-action mode: only consume -o and -v; leave everything else.
+        p = argparse.ArgumentParser(
+            prog="ibm_cloud_enum.py",
+            description=desc_base,
+            formatter_class=argparse.RawDescriptionHelpFormatter,
+        )
+        p.add_argument("action",
+                       help="Module to run (e.g. get_api_keys).")
+        p.add_argument("-o", metavar="OUTPUT_DIR", default="",
+                       help="Output folder (default: module default)")
+        p.add_argument("-v", action="store_true",
+                       help="Enable debug mode")
+        args, extras = p.parse_known_args(argv)
+        # Synthesise missing full-run attributes so the rest of main() still works
+        args.d = False
+        args.p = 10
+        args.n = 100
+        args.q = 10
+        args.m = None
+        args.f = False
+        args._extras = extras
+        return args
+
+    # Full-run mode: parse every runner flag.
     p = argparse.ArgumentParser(
         prog="ibm_cloud_enum.py",
-        description=(
-            "IBM Cloud ToolKit – run all enumeration modules, or a single one.\n\n"
-            "Available actions (same names as the underlying scripts):\n  "
-            + "\n  ".join(sorted(ACTIONS))
-        ),
+        description=desc_base,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     p.add_argument("action", nargs="?", default=None,
@@ -97,7 +159,9 @@ def parse_args(argv=None):
                    help="Maximum files to download per bucket (required to enable downloading)")
     p.add_argument("-f", action="store_true",
                    help="Flatten downloaded files (keep only filename); only used with -m")
-    return p.parse_args(argv)
+    args = p.parse_args(argv)
+    args._extras = []
+    return args
 
 
 def get_account_info() -> dict:
@@ -232,12 +296,33 @@ def main(argv=None):
 
         print(BANNER)
         require_ibmcloud_login()
+
+        # Show account info (same as full-run mode)
+        info = get_account_info()
+        print(f"{ORANGE}{BOLD}IBM Cloud Account:{RESET}")
+        print(f"· {BOLD}Account Name:{RESET} {info['account_name']}")
+        print(f"· {BOLD}Account ID / Softlayer Account:{RESET} "
+              f"{info['account_id']} - {info['softlayer_id']}")
+        print(f"· {BOLD}User Email:{RESET} {info['user_email']}")
+        print()
+
         if args.o:
             from utils import ensure_output_dir
             ensure_output_dir(args.o)
 
+        # Build the flag list: runner-level flags that apply (-o, -v) + any
+        # extra flags the user typed after ACTION (passed straight through).
+        passthrough: list[str] = []
+        if args.o:
+            passthrough += ["-o", args.o]
+        if args.v:
+            passthrough.append("-v")
+        passthrough += args._extras   # e.g. ["-p", "20", "-m", "50"]
+
+        _, script_file, _ = ACTIONS[args.action]
         modules = _import_all()
-        _run_action(args.action, args, modules)
+        mod = modules[ACTIONS[args.action][0]]
+        _run_module(mod.main, script_file, passthrough)
 
         print(" ")
         print(SEPARATOR)
