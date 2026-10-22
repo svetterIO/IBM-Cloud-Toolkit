@@ -24,7 +24,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from utils import (
-    BLUE, BOLD, ORANGE, RESET, SEPARATOR,
+    BLUE, BOLD, CYAN, ORANGE, RESET, SEPARATOR,
     _ibmcloud, failure, ibmcloud_account_id, ibmcloud_access_token,
     ibmcloud_account_name, is_ibmcloud_logged_in,
     require_ibmcloud_cdb, require_ibmcloud_ce, require_ibmcloud_cos,
@@ -58,10 +58,10 @@ def parse_args(argv=None):
                    help="Full debug mode (unredacted tokens); requires -v")
     p.add_argument("-p", metavar="PARALLEL", type=int, default=10,
                    help="Parallel workers for get_users and get_service_api_keys (default: 10)")
-    p.add_argument("-m", metavar="MAX_ITEMS", type=int, default=10,
-                   help="Maximum files to download per bucket (default: 10)")
+    p.add_argument("-m", metavar="MAX_ITEMS", type=int, default=None,
+                   help="Maximum files to download per bucket (required to enable downloading)")
     p.add_argument("-f", action="store_true",
-                   help="Flatten downloaded files (keep only filename)")
+                   help="Flatten downloaded files (keep only filename); only used with -m")
     return p.parse_args(argv)
 
 
@@ -181,13 +181,22 @@ def main(argv=None):
     # get_buckets_files is disabled by default (can be very slow)
     # _run_module(get_buckets_files.main, "get_buckets_files.py", common)
 
-    dl_flags = ["-m", str(args.m)]
-    if args.f:
-        dl_flags.append("-f")
-    _run_module(download_buckets_files.main, "download_buckets_files.py", common, dl_flags)
-
     _run_module(get_security_groups.main, "get_security_groups.py", common)
     _run_module(get_code_engine.main, "get_code_engine.py", full_debug)
+
+    # download_buckets_files runs last, only when -m is explicitly provided
+    if args.m is not None:
+        dl_flags = ["-m", str(args.m)]
+        if args.f:
+            dl_flags.append("-f")
+        _run_module(download_buckets_files.main, "download_buckets_files.py", common, dl_flags)
+    else:
+        print()
+        print(SEPARATOR)
+        print(f"{CYAN}Skipping bucket file download.{RESET}")
+        print(f"To download files from Object Storage buckets, re-run with {BOLD}-m MAX_ITEMS{RESET}:")
+        print(f"  {BOLD}python python/ibm_cloud_enum.py -m 10{RESET}   (download up to 10 files per bucket)")
+        print(f"  Add {BOLD}-f{RESET} to flatten paths (keep only filename).")
 
     print(" ")
     print(SEPARATOR)
@@ -205,9 +214,9 @@ def main(argv=None):
         print(f"  Output directory: {BOLD}{output_dir}{RESET}")
         if args.p != 10:
             print(f"  Parallel workers: {BOLD}{args.p}{RESET}")
-        if args.m != 10:
+        if args.m is not None:
             print(f"  Max download items per bucket: {BOLD}{args.m}{RESET}")
-        if args.f:
+        if args.f and args.m is not None:
             print(f"  Flatten downloads: {BOLD}enabled{RESET}")
 
     print(" ")

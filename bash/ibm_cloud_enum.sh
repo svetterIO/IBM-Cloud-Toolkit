@@ -26,7 +26,7 @@ OUTPUT_DIR_SET=false
 DEBUG=false
 DEBUG_FULL=false
 PARALLEL_WORKERS=10
-MAX_DOWNLOAD_ITEMS=10
+MAX_DOWNLOAD_ITEMS=""
 FLATTEN_DOWNLOADS=false
 usage() {
     scriptname=$(basename "$0")
@@ -38,7 +38,7 @@ usage() {
     echo "  -v              Enable debug mode for all scripts"
     echo "  -d              Enable full debug mode (requires -v, for scripts that support it)"
     echo "  -p PARALLEL     Number of parallel workers for get_users.sh and get_service_api_keys.sh (default: 10)"
-    echo "  -m MAX_ITEMS    Maximum number of files to download per bucket (default: 10)"
+    echo "  -m MAX_ITEMS    Maximum number of files to download per bucket (required to enable downloading)"
     echo "  -f              Flatten downloaded files (strip directory path, keep only filename)"
     echo
     echo "This script runs all IBM Cloud enumeration scripts."
@@ -167,16 +167,26 @@ run_script "$srcdir/get_databases.sh" $COMMON_FLAGS
 run_script "$srcdir/get_buckets.sh" $COMMON_FLAGS
 # get_buckets_files.sh: supports -v only (commented out by default)
 # run_script "$srcdir/get_buckets_files.sh" $COMMON_FLAGS
-# download_buckets_files.sh: supports -v, -m, -f
-DOWNLOAD_FLAGS="$COMMON_FLAGS -m $MAX_DOWNLOAD_ITEMS"
-if [ "$FLATTEN_DOWNLOADS" = true ]; then
-    DOWNLOAD_FLAGS="$DOWNLOAD_FLAGS -f"
-fi
-run_script "$srcdir/download_buckets_files.sh" $DOWNLOAD_FLAGS
 # get_security_groups.sh: supports -v only
 run_script "$srcdir/get_security_groups.sh" $COMMON_FLAGS
 # get_code_engine.sh: supports -v and -d
 run_script "$srcdir/get_code_engine.sh" $FULL_DEBUG_FLAGS
+# download_buckets_files.sh: runs last, only when -m is explicitly provided
+if [[ -n "$MAX_DOWNLOAD_ITEMS" ]]; then
+    DOWNLOAD_FLAGS="$COMMON_FLAGS -m $MAX_DOWNLOAD_ITEMS"
+    if [ "$FLATTEN_DOWNLOADS" = true ]; then
+        DOWNLOAD_FLAGS="$DOWNLOAD_FLAGS -f"
+    fi
+    run_script "$srcdir/download_buckets_files.sh" $DOWNLOAD_FLAGS
+else
+    echo " "
+    echo "${SEPARATOR}"
+    echo -e "${CYAN}Skipping bucket file download.${RESET}"
+    echo -e "To download files from Object Storage buckets, re-run with ${BOLD}-m MAX_ITEMS${RESET}:"
+    scriptname=$(basename "$0")
+    echo -e "  ${BOLD}./$scriptname -m 10${RESET}   (download up to 10 files per bucket)"
+    echo -e "  Add ${BOLD}-f${RESET} to flatten paths (keep only filename)."
+fi
 echo " "
 echo "${SEPARATOR}"
 echo "IBM Cloud enumeration completed."
