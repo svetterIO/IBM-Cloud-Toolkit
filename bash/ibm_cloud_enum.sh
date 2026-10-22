@@ -38,7 +38,8 @@ ACTION=""
 # All available actions (same names as the underlying scripts, without .sh)
 VALID_ACTIONS="get_api_keys get_service_api_keys get_custom_roles get_users get_user_policies
 get_mfa get_regions get_floating_IPs get_VSIs get_schematics get_clusters get_databases
-get_buckets get_buckets_files get_security_groups get_code_engine download_buckets_files"
+get_buckets get_buckets_files get_security_groups get_code_engine download_buckets_files
+search_buckets_file_names"
 
 usage() {
     scriptname=$(basename "$0")
@@ -50,7 +51,7 @@ usage() {
     echo "                    get_user_policies | get_mfa | get_regions | get_floating_IPs | get_VSIs"
     echo "                    get_schematics | get_clusters | get_databases | get_buckets"
     echo "                    get_buckets_files | get_security_groups | get_code_engine"
-    echo "                    download_buckets_files"
+    echo "                    download_buckets_files | search_buckets_file_names"
     echo
     echo "Options:"
     echo "  -h              Show this help message"
@@ -252,6 +253,8 @@ run_script "$srcdir/get_security_groups.sh" $COMMON_FLAGS
 run_script "$srcdir/get_code_engine.sh" $FULL_DEBUG_FLAGS
 # get_buckets_files.sh: list file keys per bucket (default: -n 100 keys, -q 10 workers)
 run_script "$srcdir/get_buckets_files.sh" $COMMON_FLAGS -m $MAX_LIST_ITEMS -p $LIST_PARALLEL
+# search_buckets_file_names.sh: scan keys for sensitive-looking names
+run_script "$srcdir/search_buckets_file_names.sh" $COMMON_FLAGS
 # download_buckets_files.sh: runs last, only when -m is explicitly provided
 if [[ -n "$MAX_DOWNLOAD_ITEMS" ]]; then
     DOWNLOAD_FLAGS="$COMMON_FLAGS -m $MAX_DOWNLOAD_ITEMS"

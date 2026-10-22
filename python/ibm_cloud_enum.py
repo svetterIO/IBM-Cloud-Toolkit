@@ -61,9 +61,10 @@ ACTIONS: dict[str, tuple[str, str, str]] = {
     "get_databases":         ("get_databases",          "get_databases.py",         "common"),
     "get_buckets":           ("get_buckets",            "get_buckets.py",           "common"),
     "get_buckets_files":     ("get_buckets_files",      "get_buckets_files.py",     "buckets_files"),
-    "get_security_groups":   ("get_security_groups",    "get_security_groups.py",   "common"),
-    "get_code_engine":       ("get_code_engine",        "get_code_engine.py",       "full_debug"),
-    "download_buckets_files":("download_buckets_files", "download_buckets_files.py","download"),
+    "get_security_groups":        ("get_security_groups",       "get_security_groups.py",        "common"),
+    "get_code_engine":            ("get_code_engine",           "get_code_engine.py",            "full_debug"),
+    "download_buckets_files":     ("download_buckets_files",    "download_buckets_files.py",     "download"),
+    "search_buckets_file_names":  ("search_buckets_file_names", "search_buckets_file_names.py",  "common"),
 }
 
 
@@ -374,7 +375,8 @@ def main(argv=None):
         "get_buckets",
         "get_security_groups",
         "get_code_engine",
-        "get_buckets_files",   # lists keys per bucket (default: -n 100 keys per bucket)
+        "get_buckets_files",             # lists keys per bucket (default: -n 100 keys per bucket)
+        "search_buckets_file_names",     # scans keys for sensitive-looking names
     ]
 
     for action in FULL_RUN_ORDER:
