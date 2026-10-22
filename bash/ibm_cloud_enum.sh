@@ -132,46 +132,51 @@ FULL_DEBUG_FLAGS="$COMMON_FLAGS"
 if [ "$DEBUG_FULL" = true ]; then
     FULL_DEBUG_FLAGS="$FULL_DEBUG_FLAGS -d"
 fi
+# Helper: print the command then run it
+run_script() {
+    echo -e "\n${CYAN}${BOLD}>>>${RESET} $*"
+    "$@"
+}
 # get_api_keys.sh: supports -v only
-"$srcdir/get_api_keys.sh" $COMMON_FLAGS
+run_script "$srcdir/get_api_keys.sh" $COMMON_FLAGS
 # get_service_api_keys.sh: supports -v and -p
 SERVICE_API_FLAGS="$COMMON_FLAGS -p $PARALLEL_WORKERS"
-"$srcdir/get_service_api_keys.sh" $SERVICE_API_FLAGS
+run_script "$srcdir/get_service_api_keys.sh" $SERVICE_API_FLAGS
 # get_custom_roles.sh: supports -v and -d
-"$srcdir/get_custom_roles.sh" $FULL_DEBUG_FLAGS
+run_script "$srcdir/get_custom_roles.sh" $FULL_DEBUG_FLAGS
 # get_users.sh: supports -v, -d, and -p
 USER_FLAGS="$FULL_DEBUG_FLAGS -p $PARALLEL_WORKERS"
-"$srcdir/get_users.sh" $USER_FLAGS
+run_script "$srcdir/get_users.sh" $USER_FLAGS
 # get_user_policies.sh: supports -v and -d
-"$srcdir/get_user_policies.sh" $FULL_DEBUG_FLAGS
+run_script "$srcdir/get_user_policies.sh" $FULL_DEBUG_FLAGS
 # get_mfa.sh: supports -v and -d
-"$srcdir/get_mfa.sh" $FULL_DEBUG_FLAGS
+run_script "$srcdir/get_mfa.sh" $FULL_DEBUG_FLAGS
 # get_regions.sh: supports -v only
-"$srcdir/get_regions.sh" $COMMON_FLAGS
+run_script "$srcdir/get_regions.sh" $COMMON_FLAGS
 # get_floating_IPs.sh: supports -v only
-"$srcdir/get_floating_IPs.sh" $COMMON_FLAGS
+run_script "$srcdir/get_floating_IPs.sh" $COMMON_FLAGS
 # get_VSIs.sh: supports -v only
-"$srcdir/get_VSIs.sh" $COMMON_FLAGS
+run_script "$srcdir/get_VSIs.sh" $COMMON_FLAGS
 # get_schematics.sh: supports -v only (has -r but we use defaults)
-"$srcdir/get_schematics.sh" $COMMON_FLAGS
+run_script "$srcdir/get_schematics.sh" $COMMON_FLAGS
 # get_clusters.sh: supports -v and -d
-"$srcdir/get_clusters.sh" $FULL_DEBUG_FLAGS
+run_script "$srcdir/get_clusters.sh" $FULL_DEBUG_FLAGS
 # get_databases.sh: supports -v only
-"$srcdir/get_databases.sh" $COMMON_FLAGS
+run_script "$srcdir/get_databases.sh" $COMMON_FLAGS
 # get_buckets.sh: supports -v only
-"$srcdir/get_buckets.sh" $COMMON_FLAGS
+run_script "$srcdir/get_buckets.sh" $COMMON_FLAGS
 # get_buckets_files.sh: supports -v only (commented out by default)
-# "$srcdir/get_buckets_files.sh" $COMMON_FLAGS
+# run_script "$srcdir/get_buckets_files.sh" $COMMON_FLAGS
 # download_buckets_files.sh: supports -v, -m, -f
 DOWNLOAD_FLAGS="$COMMON_FLAGS -m $MAX_DOWNLOAD_ITEMS"
 if [ "$FLATTEN_DOWNLOADS" = true ]; then
     DOWNLOAD_FLAGS="$DOWNLOAD_FLAGS -f"
 fi
-"$srcdir/download_buckets_files.sh" $DOWNLOAD_FLAGS
+run_script "$srcdir/download_buckets_files.sh" $DOWNLOAD_FLAGS
 # get_security_groups.sh: supports -v only
-"$srcdir/get_security_groups.sh" $COMMON_FLAGS
+run_script "$srcdir/get_security_groups.sh" $COMMON_FLAGS
 # get_code_engine.sh: supports -v and -d
-"$srcdir/get_code_engine.sh" $FULL_DEBUG_FLAGS
+run_script "$srcdir/get_code_engine.sh" $FULL_DEBUG_FLAGS
 echo " "
 echo "${SEPARATOR}"
 echo "IBM Cloud enumeration completed."

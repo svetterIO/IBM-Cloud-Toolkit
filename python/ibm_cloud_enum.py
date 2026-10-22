@@ -94,9 +94,11 @@ def get_account_info() -> dict:
     return info
 
 
-def _run_module(module_main, common_flags: list[str], extra_flags: list[str] = None) -> None:
-    """Call a module's main() function with the assembled flag list."""
+def _run_module(module_main, script_name: str, common_flags: list[str], extra_flags: list[str] = None) -> None:
+    """Print the command being executed, then call the module's main()."""
     flags = common_flags + (extra_flags or [])
+    cmd = " ".join(["python", f"python/{script_name}"] + flags)
+    print(f"\n{CYAN}{BOLD}>>>{RESET} {cmd}")
     try:
         module_main(flags)
     except SystemExit as exc:
@@ -163,29 +165,29 @@ def main(argv=None):
     import get_security_groups
     import get_code_engine
 
-    _run_module(get_api_keys.main, common)
-    _run_module(get_service_api_keys.main, common, ["-p", str(args.p)])
-    _run_module(get_custom_roles.main, full_debug)
-    _run_module(get_users.main, full_debug, ["-p", str(args.p)])
-    _run_module(get_user_policies.main, common)
-    _run_module(get_mfa.main, full_debug)
-    _run_module(get_regions.main, common)
-    _run_module(get_floating_IPs.main, common)
-    _run_module(get_VSIs.main, common)
-    _run_module(get_schematics.main, common)
-    _run_module(get_clusters.main, full_debug)
-    _run_module(get_databases.main, common)
-    _run_module(get_buckets.main, common)
+    _run_module(get_api_keys.main, "get_api_keys.py", common)
+    _run_module(get_service_api_keys.main, "get_service_api_keys.py", common, ["-p", str(args.p)])
+    _run_module(get_custom_roles.main, "get_custom_roles.py", full_debug)
+    _run_module(get_users.main, "get_users.py", full_debug, ["-p", str(args.p)])
+    _run_module(get_user_policies.main, "get_user_policies.py", common)
+    _run_module(get_mfa.main, "get_mfa.py", full_debug)
+    _run_module(get_regions.main, "get_regions.py", common)
+    _run_module(get_floating_IPs.main, "get_floating_IPs.py", common)
+    _run_module(get_VSIs.main, "get_VSIs.py", common)
+    _run_module(get_schematics.main, "get_schematics.py", common)
+    _run_module(get_clusters.main, "get_clusters.py", full_debug)
+    _run_module(get_databases.main, "get_databases.py", common)
+    _run_module(get_buckets.main, "get_buckets.py", common)
     # get_buckets_files is disabled by default (can be very slow)
-    # import get_buckets_files; _run_module(get_buckets_files.main, common)
+    # _run_module(get_buckets_files.main, "get_buckets_files.py", common)
 
     dl_flags = ["-m", str(args.m)]
     if args.f:
         dl_flags.append("-f")
-    _run_module(download_buckets_files.main, common, dl_flags)
+    _run_module(download_buckets_files.main, "download_buckets_files.py", common, dl_flags)
 
-    _run_module(get_security_groups.main, common)
-    _run_module(get_code_engine.main, full_debug)
+    _run_module(get_security_groups.main, "get_security_groups.py", common)
+    _run_module(get_code_engine.main, "get_code_engine.py", full_debug)
 
     print(" ")
     print(SEPARATOR)
