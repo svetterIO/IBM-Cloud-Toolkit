@@ -192,6 +192,10 @@ def require_ibmcloud_ce() -> None:
     _require_plugin("code-engine", "code-engine (ce)")
 
 
+def require_ibmcloud_cr() -> None:
+    _require_plugin("container-registry", "container-registry (cr)")
+
+
 # ── Output helpers ────────────────────────────────────────────────────────────
 
 def failure(msg: str) -> None:

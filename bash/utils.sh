@@ -108,6 +108,13 @@ require_ibmcloud_ce() {
     fi
 }
 
+# Check if IBM Cloud Container Registry plugin ("cr") is installed
+require_ibmcloud_cr() {
+    if ! ibmcloud plugin list | grep -qw "container-registry"; then
+        failure "IBM Cloud Container Registry plugin ('cr') is not installed. Please run: ibmcloud plugin install container-registry"
+    fi
+}
+
 # Failure function
 failure() {
     echo -e "${BOLD}${BRIGHT_RED}FAILED: ${RESET}$*"
