@@ -4,8 +4,9 @@
 #
 # This script retrieves all Service IDs in the IBM Cloud account
 # and extracts all associated Service API keys for each Service ID.
-# It outputs their id, name, created_at, and created_by fields
-# in a readable JSON format.
+# It outputs the key details (id, name, created_at, created_by, expires_at,
+# disabled, leaked, locked, ...) plus a computed "active" flag (true unless the
+# key is disabled or expired) in a readable JSON format.
 # It also identifies Service API keys that have not been rotated within
 # a configurable period (default: 90 days), and API keys that contain
 # an actual apikey value (saved separately to leaked_service_api_keys.json).
@@ -21,6 +22,11 @@ OUTPUT_FILE="service_api_keys.json"
 ROTATION_DAYS=90
 DEBUG=false
 MAX_PARALLEL=10
+
+# jq filter: add whether each key is still active. Timestamps look like
+# 2025-07-09T05:05+0000 (no seconds, no colon in the offset), so only the leading
+# YYYY-MM-DDTHH:MM part is used. expires_at "" means no expiry.
+JQ_ADD_ACTIVE='map(.active = ((.disabled | not) and ((.expires_at // "") == "" or (try (((.expires_at[0:16] + ":00Z") | fromdateiso8601) > now) catch true))))'
 
 usage() {
     scriptname=$(basename "$0")
@@ -234,7 +240,9 @@ fi
 
 echo -e "${BOLD}Total Service API keys: $TOTAL_API_KEYS${RESET}"
 echo " "
-echo "$ALL_KEYS" | jq '.' > "$OUTPUT_PATH" || failure "Failed writing to $OUTPUT_PATH"
+echo "$ALL_KEYS" | jq "$JQ_ADD_ACTIVE" > "$OUTPUT_PATH" || failure "Failed writing to $OUTPUT_PATH"
+INACTIVE_API_KEYS=$(jq '[.[] | select(.active | not)] | length' "$OUTPUT_PATH")
+echo -e "${BOLD}Inactive Service API keys (disabled or expired): ${INACTIVE_API_KEYS}${RESET}"
 echo -e "All Service API keys saved to: ${BOLD}${OUTPUT_PATH}${RESET}"
 
 # Identify keys with apikey values (potential leaks)

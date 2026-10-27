@@ -5,6 +5,8 @@ python/get_service_api_keys.py
 Enumerates all Service IDs and their associated API keys.
 Detects leaked keys (containing an apikey value) and non-rotated keys.
 
+Each key records whether it is still active (not disabled and not expired).
+
 Output files:
   <output_dir>/service_api_keys.json           – all service API keys
   <output_dir>/leaked_service_api_keys.json    – keys with exposed apikey values
@@ -24,7 +26,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from utils import (
     BOLD, ORANGE, RESET, SEPARATOR, YELLOW,
     _ibmcloud, days_since_iso, ensure_output_dir, failure,
-    print_console_link, require_ibmcloud_login,
+    iso_is_past, print_console_link, require_ibmcloud_login,
 )
 
 
@@ -56,6 +58,8 @@ def fetch_keys_for_service(service_id: str, service_name: str, debug: bool) -> l
             k["service_name"] = service_name
             # Direct link to this Service ID's API keys tab in the IBM Cloud console
             k["browser_url"] = f"https://cloud.ibm.com/iam/serviceids/{service_id}?tab=apikeys"
+            # A key is active unless it was disabled or its expiration date has passed
+            k["active"] = not k.get("disabled") and not iso_is_past(k.get("expires_at") or "")
         return keys
     except json.JSONDecodeError:
         return []
@@ -113,6 +117,8 @@ def main(argv=None):
         return
 
     print(f"{BOLD}Total Service API keys: {len(all_keys)}{RESET}")
+    inactive = sum(1 for k in all_keys if not k["active"])
+    print(f"{BOLD}Inactive Service API keys (disabled or expired): {inactive}{RESET}")
     output_path.write_text(json.dumps(all_keys, indent=2), encoding="utf-8")
     print(f"All Service API keys saved to: {BOLD}{output_path}{RESET}")
 
