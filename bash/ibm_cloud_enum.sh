@@ -7,7 +7,7 @@
 # Usage: ./ibm_cloud_enum.sh [ACTION] [-h] [-o OUTPUT_DIR] [-v] [-d] [-p PARALLEL] [-m MAX_ITEMS] [-f] [-s]
 # ACTION (optional): run only one module, e.g. get_api_keys  (omit to run all)
 # -h: Show help
-# -o OUTPUT_DIR: Specify output directory for all scripts (default: each script uses its own default)
+# -o OUTPUT_DIR: Specify output directory for all scripts (default: time-bound 'output_YYYYMMDD_HHMMSS')
 # -v: Enable debug mode for all scripts
 # -d: Enable full debug mode (requires -v, only for scripts that support it)
 # -p PARALLEL: Number of parallel workers for get_users.sh and get_service_api_keys.sh (default: 10)
@@ -58,7 +58,7 @@ usage() {
     echo
     echo "Options:"
     echo "  -h              Show this help message"
-    echo "  -o OUTPUT_DIR   Specify the output folder for results (default: each script uses 'output')"
+    echo "  -o OUTPUT_DIR   Specify the output folder for results (default: time-bound 'output_YYYYMMDD_HHMMSS')"
     echo "  -v              Enable debug mode for all scripts"
     echo "  -d              Enable full debug mode (requires -v, for scripts that support it)"
     echo "  -p PARALLEL     Number of parallel workers for get_users.sh and get_service_api_keys.sh (default: 10)"
@@ -141,6 +141,12 @@ if [ "$DEBUG_FULL" = true ] && [ "$DEBUG" = false ]; then
     echo "Error: -d flag requires -v flag to be set" >&2
     usage
     exit 1
+fi
+
+# Default to a time-bound output folder (e.g. output_20261026_082939) so runs never overwrite each other
+if [ "$OUTPUT_DIR_SET" != true ]; then
+    OUTPUT_DIR="output_$(date +%Y%m%d_%H%M%S)"
+    OUTPUT_DIR_SET=true
 fi
 
 echo -e "$BANNER"

@@ -16,6 +16,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import datetime
 import json
 import sys
 from pathlib import Path
@@ -122,7 +123,7 @@ def parse_args(argv=None):
         p.add_argument("action",
                        help="Module to run (e.g. get_api_keys).")
         p.add_argument("-o", metavar="OUTPUT_DIR", default="",
-                       help="Output folder (default: module default)")
+                       help="Output folder (default: time-bound 'output_YYYYMMDD_HHMMSS')")
         p.add_argument("-v", action="store_true",
                        help="Enable debug mode")
         args, extras = p.parse_known_args(argv)
@@ -148,7 +149,7 @@ def parse_args(argv=None):
                    help="Run a single module instead of all (e.g. get_api_keys). "
                         "Omit to run everything.")
     p.add_argument("-o", metavar="OUTPUT_DIR", default="",
-                   help="Output folder for all modules (default: each module uses 'output')")
+                   help="Output folder for all modules (default: time-bound 'output_YYYYMMDD_HHMMSS')")
     p.add_argument("-v", action="store_true",
                    help="Enable debug mode for all modules")
     p.add_argument("-d", action="store_true",
@@ -296,6 +297,11 @@ def main(argv=None):
     if args.d and not args.v:
         print("Error: -d flag requires -v flag to be set", file=sys.stderr)
         sys.exit(1)
+
+    # Default to a time-bound output folder (e.g. output_20261026_082939)
+    # so runs never overwrite each other.
+    if not args.o:
+        args.o = datetime.datetime.now().strftime("output_%Y%m%d_%H%M%S")
 
     # ── Single-action mode ────────────────────────────────────────────────────
     if args.action is not None:
