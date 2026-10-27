@@ -5,6 +5,8 @@ python/get_api_keys.py
 Enumerates all IBM Cloud account-level API keys and identifies those
 not rotated within a configurable number of days (default: 90).
 
+Each key records whether it is still active (not disabled and not expired).
+
 Output files:
   <output_dir>/api_keys.txt               – JSON array of all API keys
   <output_dir>/non_rotated_api_keys.txt   – JSON array of non-rotated keys
@@ -23,8 +25,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from utils import (
     BOLD, ORANGE, RESET, SEPARATOR,
     _ibmcloud, days_since_iso, ensure_output_dir, failure,
-    print_console_link, require_ibmcloud_login,
+    iso_is_past, print_console_link, require_ibmcloud_login,
 )
+
+KEY_FIELDS = ("id", "name", "created_at", "created_by", "expires_at", "disabled", "leaked", "locked")
 
 
 def parse_args(argv=None):
@@ -66,10 +70,12 @@ def main(argv=None):
     except json.JSONDecodeError:
         failure("Failed to parse API keys response as JSON.")
 
-    api_keys = [
-        {k: entry.get(k) for k in ("id", "name", "created_at", "created_by")}
-        for entry in raw
-    ]
+    api_keys = []
+    for entry in raw:
+        key = {k: entry.get(k) for k in KEY_FIELDS}
+        # A key is active unless it was disabled or its expiration date has passed
+        key["active"] = not key["disabled"] and not iso_is_past(key["expires_at"] or "")
+        api_keys.append(key)
 
     if not api_keys:
         print("No API keys found.")
@@ -77,6 +83,8 @@ def main(argv=None):
 
     total = len(api_keys)
     print(f"{BOLD}Total API keys found: {total}{RESET}")
+    inactive = sum(1 for k in api_keys if not k["active"])
+    print(f"{BOLD}Inactive API keys (disabled or expired): {inactive}{RESET}")
     print(" ")
     output_path.write_text(json.dumps(api_keys, indent=2), encoding="utf-8")
     print(f"Output saved to: {BOLD}{output_path}{RESET}")

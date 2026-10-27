@@ -236,20 +236,41 @@ def ensure_output_dir(path: str) -> Path:
 
 # ── Date helpers ──────────────────────────────────────────────────────────────
 
-def days_since_iso(iso_timestamp: str) -> Optional[int]:
-    """Return the number of days since *iso_timestamp* (ISO 8601), or None."""
+def parse_iso(iso_timestamp: str):
+    """Parse an ISO 8601 timestamp into an aware datetime, or return None.
+
+    Accepts 'Z', '+00:00' and '+0000' offsets and timestamps without seconds
+    (e.g. '2025-07-09T05:05+0000', as printed by the IBM Cloud CLI).
+    """
     import datetime  # local import to keep module-level imports lean
+    import re
 
     try:
-        # Handle both 'Z' and '+00:00' suffixes
-        ts = iso_timestamp.replace("Z", "+00:00")
+        ts = re.sub(r"([+-]\d{2})(\d{2})$", r"\1:\2", iso_timestamp.strip().replace("Z", "+00:00"))
         dt = datetime.datetime.fromisoformat(ts)
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=datetime.timezone.utc)
-        now = datetime.datetime.now(tz=datetime.timezone.utc)
-        return (now - dt).days
-    except (ValueError, TypeError):
+        return dt
+    except (ValueError, TypeError, AttributeError):
         return None
+
+
+def days_since_iso(iso_timestamp: str) -> Optional[int]:
+    """Return the number of days since *iso_timestamp* (ISO 8601), or None."""
+    import datetime
+
+    dt = parse_iso(iso_timestamp)
+    if dt is None:
+        return None
+    return (datetime.datetime.now(tz=datetime.timezone.utc) - dt).days
+
+
+def iso_is_past(iso_timestamp: str) -> bool:
+    """Return True if *iso_timestamp* lies in the past (False when empty/unparseable)."""
+    import datetime
+
+    dt = parse_iso(iso_timestamp)
+    return dt is not None and dt < datetime.datetime.now(tz=datetime.timezone.utc)
 
 
 # ── REST API helpers ──────────────────────────────────────────────────────────

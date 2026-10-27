@@ -3,7 +3,8 @@
 # get_api_keys.sh
 #
 # This script retrieves all API keys in the IBM Cloud account and outputs their
-# id, name, created_at, and created_by fields in a readable format.
+# id, name, created_at, created_by, expires_at, disabled, leaked and locked fields
+# plus a computed "active" flag (true unless the key is disabled or expired).
 # It also identifies API keys that have not been rotated within a configurable 
 # period (default: 90 days).
 # Requires IBM Cloud CLI and jq for JSON parsing.
@@ -17,11 +18,16 @@ OUTPUT_DIR="output"
 OUTPUT_FILE="api_keys.txt"
 ROTATION_DAYS=90
 
+# jq filter: keep the relevant fields and compute whether the key is still active.
+# Timestamps look like 2025-07-09T05:05+0000 (no seconds, no colon in the offset),
+# so only the leading YYYY-MM-DDTHH:MM part is used. expires_at "" means no expiry.
+JQ_API_KEYS='[.[] | {id, name, created_at, created_by, expires_at, disabled, leaked, locked}
+    | .active = ((.disabled | not) and ((.expires_at // "") == "" or (try (((.expires_at[0:16] + ":00Z") | fromdateiso8601) > now) catch true)))]'
+
 DEBUG=false
 # Usage
 usage() {
     scriptname=$(basename "$0")
-    echo "Usage: ./$scriptname [-h] [-o OUTPUT_DIR] [-f OUTPUT_FILE]"
     echo "Usage: ./$scriptname [-h] [-o OUTPUT_DIR] [-f OUTPUT_FILE] [-d ROTATION_DAYS] [-v]"
     echo
     echo "Options:"
@@ -86,16 +92,18 @@ echo -e "Enumerating all ${ORANGE}${BOLD}API keys${RESET} ..."
 echo " "
 # Debug output
 if [ "$DEBUG" = true ]; then
-    echo -e "${BOLD}[DEBUG]${RESET} Running command: ibmcloud iam api-keys -a -o JSON | jq '[.[] | {id, name, created_at, created_by}]'"
+    echo -e "${BOLD}[DEBUG]${RESET} Running command: ibmcloud iam api-keys -a -o JSON | jq <filter>"
 fi
-API_KEYS=$(ibmcloud iam api-keys -a -o JSON | jq '[.[] | {id, name, created_at, created_by}]')
+API_KEYS=$(ibmcloud iam api-keys -a -o JSON | jq "$JQ_API_KEYS")
 
 if [[ -z "${API_KEYS:-}" ]]; then
     echo "No API keys found."
 else
     # Count total API keys
     TOTAL_API_KEYS=$(echo "$API_KEYS" | jq '. | length')
+    INACTIVE_API_KEYS=$(echo "$API_KEYS" | jq '[.[] | select(.active | not)] | length')
     echo -e "${BOLD}Total API keys found: ${TOTAL_API_KEYS}${RESET}"
+    echo -e "${BOLD}Inactive API keys (disabled or expired): ${INACTIVE_API_KEYS}${RESET}"
     echo " "
     : > "$OUTPUT_PATH" || failure "Error while creating the output file: ${BOLD}$OUTPUT_PATH${RESET}"
     echo "${API_KEYS}" > "$OUTPUT_PATH"
