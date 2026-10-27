@@ -20,6 +20,7 @@ Contributions and community feedback are welcome! If you find these scripts usef
 IBM-Cloud-Toolkit/
 ├── bash/           Bash modules, utils.sh, ibm_cloud_enum.sh
 ├── python/         Python modules, utils.py, ibm_cloud_enum.py
+├── report/         Offline HTML report viewer (report/index.html)
 ├── install/        IBM Cloud CLI installers (Bash, PowerShell, Python)
 ├── docs/
 │   └── images/     README images
@@ -154,6 +155,28 @@ python3 python/ibm_cloud_enum.py
 # Windows
 python python\ibm_cloud_enum.py
 ```
+
+---
+
+## Output directory
+
+The runners (`ibm_cloud_enum.sh` / `ibm_cloud_enum.py`) write every run into a **time-bound folder**, e.g. `output_20261026_082939`, so runs never overwrite each other. Use `-o OUTPUT_DIR` to choose a different folder. Individual modules started on their own still default to `output`.
+
+`output/` and `output_*/` are listed in `.gitignore`, so client data never ends up in a git commit.
+
+---
+
+## HTML Report
+
+[`report/index.html`](report/index.html) is a single-page report viewer in the IBM Carbon style. It needs **no web server and no internet access** – just open the file in your browser.
+
+1. Click **Select folder** (or drag and drop) and choose the folder containing your `output_*` directories, or a single output folder.
+2. The latest run is selected automatically; use the **Output directory** dropdown to switch between runs.
+3. Each module is a collapsible section. Tables can be filtered and sorted, and copied as plain text, Markdown, Excel (tab-separated) or Word (formatted table). Copies respect the active filters.
+4. Besides the text filter (searching `active` matches only active keys, `inactive` only inactive ones), tables with a creation date offer **Created at from / until** date pickers to show only keys created on or after / on or before a day (compared in UTC, both days inclusive).
+5. Use the **Dark mode** switch in the header to change the theme (IBM Carbon white / gray 100). The choice is remembered in the browser; without a saved choice the operating system preference is used.
+
+Currently available: **API keys** (all keys, and keys not rotated within the rotation threshold) with a **Copy unique API key IDs** button and a **Status** column (`Active`, `Inactive (disabled)`, `Inactive (expired)`, or `Unknown` for runs created before the status was recorded). A key is inactive when it is disabled or its `expires_at` date has passed. **Service API keys** (all keys, keys with an exposed key value, and keys not rotated within the rotation threshold) with service name/ID, description, the same Status column, expiry, locked flag, a **Key exposed** column, a clickable console link and the **API key** value. The key is masked in a read-only password field; the eye button reveals it in full, selected and ready to copy. The key value is never part of the text filter or of any "Copy table as" format. More modules will follow. All data is read locally in the browser; a Content-Security-Policy blocks any network request.
 
 ---
 
