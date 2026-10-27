@@ -2,9 +2,10 @@
 
 # get_databases.sh
 #
-# This script enumerates all IBM Cloud Databases and outputs them as a JSON array.
+# This script enumerates all IBM Cloud Databases (Cloud Databases, DB2 and Cloudant) and outputs them as a JSON array.
 # For each database, it outputs: id, name, type, endpoint, and other relevant info.
-# If any database has a public endpoint enabled, a separate output file is created with only those databases.
+# If any database has a public endpoint enabled, a separate output file is created with only those databases,
+# including their public endpoints (hostname:port).
 # Requires IBM Cloud CLI and databases ("cdb") plugin. Requires jq for JSON processing.
 
 srcdir="$(dirname "${BASH_SOURCE[0]}")"
@@ -24,7 +25,7 @@ usage() {
     echo "  -f OUTPUT_FILE  Specify the output file name (default: 'databases.json')"
     echo "  -v              Enable debug mode (outputs commands)"
     echo
-    echo "This script enumerates all IBM Cloud Databases."
+    echo "This script enumerates all IBM Cloud Databases (Cloud Databases, DB2 and Cloudant)."
 }
 
 while getopts ":ho:f:v" opt; do
@@ -71,6 +72,43 @@ echo "${SEPARATOR}"
 echo -e "Enumerating IBM Cloud ${ORANGE}${BOLD}Databases${RESET}..."
 echo " "
 
+# Retrieve resource controller instances of a service as a JSON array on stdout.
+# Usage: get_resource_instances <service-name> <label> <stderr/stdout file stem>
+get_resource_instances() {
+    local service_name="$1" label="$2" stem="$3"
+    local stderr_file json
+
+    if [ "$DEBUG" = true ]; then
+        echo -e "${BOLD}[DEBUG]${RESET} Running command: ibmcloud resource service-instances --service-name $service_name --all-resource-groups --output json" >&2
+    fi
+
+    stderr_file=$(mktemp) || failure "Failed to create a temporary error file."
+
+    if json=$(ibmcloud resource service-instances \
+        --service-name "$service_name" \
+        --all-resource-groups \
+        --output json \
+        2>"$stderr_file"); then
+
+        if ! printf '%s' "$json" | jq '.' >/dev/null 2>&1; then
+            mv "$stderr_file" "$OUTPUT_DIR/$stem.stderr"
+            printf '%s\n' "$json" > "$OUTPUT_DIR/$stem.stdout"
+            warning "$label CLI returned invalid JSON. Review $OUTPUT_DIR/$stem.stderr and $OUTPUT_DIR/$stem.stdout." >&2
+            echo '[]'
+        elif [ "$json" = "null" ]; then
+            rm -f "$stderr_file"
+            echo '[]'
+        else
+            rm -f "$stderr_file"
+            echo "$json"
+        fi
+    else
+        mv "$stderr_file" "$OUTPUT_DIR/$stem.stderr"
+        warning "Failed to retrieve $label instances. Review $OUTPUT_DIR/$stem.stderr." >&2
+        echo '[]'
+    fi
+}
+
 # Debug output
 if [ "$DEBUG" = true ]; then
     echo -e "${BOLD}[DEBUG]${RESET} Running command: ibmcloud cdb deployments --json"
@@ -101,45 +139,29 @@ CDB_COUNT=$(echo "${DBS_JSON:-[]}" | jq 'length')
 
 if [ "$DEBUG" = true ]; then
     echo -e "${BOLD}[DEBUG]${RESET} Found $CDB_COUNT Cloud Database(s)"
-    echo -e "${BOLD}[DEBUG]${RESET} Running command: ibmcloud resource service-instances --service-name dashdb-for-transactions --all-resource-groups --output json"
 fi
 
 # Get DB2 instances
-DB2_STDERR=$(mktemp) || failure "Failed to create a temporary error file."
-
-if DB2_JSON=$(ibmcloud resource service-instances \
-    --service-name dashdb-for-transactions \
-    --all-resource-groups \
-    --output json \
-    2>"$DB2_STDERR"); then
-
-    if ! printf '%s' "$DB2_JSON" | jq '.' >/dev/null 2>&1; then
-        mv "$DB2_STDERR" "$OUTPUT_DIR/db2_instances.stderr"
-        printf '%s\n' "$DB2_JSON" > "$OUTPUT_DIR/db2_instances.stdout"
-        warning "DB2 CLI returned invalid JSON. Review $OUTPUT_DIR/db2_instances.stderr and $OUTPUT_DIR/db2_instances.stdout."
-        DB2_JSON='[]'
-
-    elif [ "$DB2_JSON" = "null" ]; then
-        rm -f "$DB2_STDERR"
-        DB2_JSON='[]'
-
-    else
-        rm -f "$DB2_STDERR"
-    fi
-else
-    mv "$DB2_STDERR" "$OUTPUT_DIR/db2_instances.stderr"
-    warning "Failed to retrieve DB2 instances. Review $OUTPUT_DIR/db2_instances.stderr."
-    DB2_JSON='[]'
-fi
-
+DB2_JSON=$(get_resource_instances "dashdb-for-transactions" "DB2" "db2_instances")
 DB2_COUNT=$(printf '%s' "$DB2_JSON" | jq 'length')
 
 if [ "$DEBUG" = true ]; then
     echo -e "${BOLD}[DEBUG]${RESET} Found $DB2_COUNT DB2 instance(s)"
 fi
 
-# Merge both JSON arrays
-COMBINED_DBS=$(jq -s 'add' <(echo "${DBS_JSON:-[]}") <(echo "${DB2_JSON:-[]}"))
+# Get Cloudant instances
+CLOUDANT_JSON=$(get_resource_instances "cloudantnosqldb" "Cloudant" "cloudant_instances")
+CLOUDANT_COUNT=$(printf '%s' "$CLOUDANT_JSON" | jq 'length')
+
+if [ "$DEBUG" = true ]; then
+    echo -e "${BOLD}[DEBUG]${RESET} Found $CLOUDANT_COUNT Cloudant instance(s)"
+fi
+
+# Merge all JSON arrays, tagging each entry with the service it came from
+COMBINED_DBS=$(jq -s 'add' \
+    <(echo "${DBS_JSON:-[]}" | jq 'map(. + {db_service: "cloud-databases"})') \
+    <(echo "${DB2_JSON:-[]}" | jq 'map(. + {db_service: "db2"})') \
+    <(echo "${CLOUDANT_JSON:-[]}" | jq 'map(. + {db_service: "cloudant"})'))
 if [[ -z "${COMBINED_DBS:-}" || "$COMBINED_DBS" == "[]" || "$COMBINED_DBS" == "null" ]]; then
     echo " "
     echo -e "${BOLD}Total databases found: 0${RESET}"
@@ -162,7 +184,7 @@ echo " "
 echo -e "${BOLD}Databases:${RESET}"
 while IFS= read -r db; do
     db_name=$(echo "$db" | jq -r '.name')
-    db_type=$(echo "$db" | jq -r '.type // .service_id // "unknown"')
+    db_type=$(echo "$db" | jq -r '.type // .service_id // .db_service // "unknown"')
     db_guid=$(echo "$db" | jq -r '.guid // .id')
     echo "  - $db_name (Type: $db_type)"
     if [ "$DEBUG" = true ]; then
@@ -174,11 +196,6 @@ echo " "
 
 # Enumerate databases with public endpoint enabled
 PUBLIC_ENDPOINT_DBS="[]"
-DB_GUIDS=()
-
-while IFS= read -r db_guid; do
-    DB_GUIDS+=("$db_guid")
-done < <(echo "$DBS_JSON" | jq -r '.[].guid')  # DB guid from both Cloud Databases and DB2
 
 # unset resource group to check db_guid in all if previously set manually
 if [ "$DEBUG" = true ]; then
@@ -191,27 +208,59 @@ if [ "$DEBUG" = true ]; then
 fi
 
 PUBLIC_COUNT=0
-for db_guid in "${DB_GUIDS[@]}"; do
+while IFS= read -r db; do
+    db_guid=$(echo "$db" | jq -r '.guid // .id // empty')
+    if [[ -z "$db_guid" ]]; then
+        continue
+    fi
+    db_service=$(echo "$db" | jq -r '.db_service')
+    db_ref=$(echo "$db" | jq -r '.crn // .name')
+
     if [ "$DEBUG" = true ]; then
         echo -e "${BOLD}[DEBUG]${RESET} Running command: ibmcloud resource service-instance \"$db_guid\" --output json"
     fi
-    DB_INSTANCE_JSON=$(ibmcloud resource service-instance "$db_guid" --output json 2>/dev/null)
-    if [[ -z "${DB_INSTANCE_JSON:-}" || "$DB_INSTANCE_JSON" == "[]" ]]; then
+    DB_INSTANCE_JSON=$(ibmcloud resource service-instance "$db_guid" --output json 2>/dev/null </dev/null) || true
+    if [[ -z "${DB_INSTANCE_JSON:-}" || "$DB_INSTANCE_JSON" == "[]" ]] || ! echo "$DB_INSTANCE_JSON" | jq -e 'type == "array"' >/dev/null 2>&1; then
         if [ "$DEBUG" = true ]; then
             echo -e "${BOLD}[DEBUG]${RESET} Could not retrieve details for this database"
         fi
         continue
     fi
     ENDPOINT_TYPE=$(echo "$DB_INSTANCE_JSON" | jq -r '.[0].parameters["service-endpoints"] // "private"')
+    # Public endpoint advertised in the instance extensions (e.g. Cloudant), as hostname:port
+    EXT_ENDPOINT=$(echo "$DB_INSTANCE_JSON" | jq -r '
+        (try .[0].extensions.endpoints.public catch null) // "" |
+        if type == "string" and . != "" then
+            (sub("^https?://"; "") | split("/")[0] | if contains(":") then . else . + ":443" end)
+        else "" end')
+    db_name=$(echo "$DB_INSTANCE_JSON" | jq -r '.[0].name')
     if [ "$DEBUG" = true ]; then
-        db_name=$(echo "$DB_INSTANCE_JSON" | jq -r '.[0].name')
         echo -e "${BOLD}[DEBUG]${RESET} Database \"$db_name\": endpoint type = $ENDPOINT_TYPE"
     fi
-    if [[ "$ENDPOINT_TYPE" != "private" ]]; then
-        PUBLIC_COUNT=$((PUBLIC_COUNT + 1))
-        PUBLIC_ENDPOINT_DBS=$(jq -s 'add' <(echo "$PUBLIC_ENDPOINT_DBS") <(echo "$DB_INSTANCE_JSON" | jq '[.[] | {name, guid, crn, service_endpoints: .parameters["service-endpoints"]}]'))
+
+    if [[ "$ENDPOINT_TYPE" == "private" && ! ( "$db_service" == "cloudant" && -n "$EXT_ENDPOINT" ) ]]; then
+        continue
     fi
-done
+
+    if [[ "$db_service" == "cloud-databases" ]]; then
+        if [ "$DEBUG" = true ]; then
+            echo -e "${BOLD}[DEBUG]${RESET} Running command: ibmcloud cdb deployment-connections \"$db_ref\" --endpoint-type public --all --output json"
+        fi
+        ENDPOINTS_JSON=$(ibmcloud cdb deployment-connections "$db_ref" --endpoint-type public --all --output json 2>/dev/null </dev/null \
+            | jq -c '[.. | objects | select((.hostname // "") != "" and .port != null) | "\(.hostname):\(.port)"] | unique' 2>/dev/null) || ENDPOINTS_JSON="[]"
+        [[ -n "$ENDPOINTS_JSON" ]] || ENDPOINTS_JSON="[]"
+    elif [[ -n "$EXT_ENDPOINT" ]]; then
+        ENDPOINTS_JSON=$(jq -c -n --arg e "$EXT_ENDPOINT" '[$e]')
+    else
+        ENDPOINTS_JSON="[]"
+    fi
+
+    PUBLIC_COUNT=$((PUBLIC_COUNT + 1))
+    ENTRY=$(echo "$DB_INSTANCE_JSON" | jq -c --arg guid "$db_guid" --arg svc "$db_service" --arg ep "$ENDPOINT_TYPE" \
+        --argjson endpoints "$ENDPOINTS_JSON" \
+        '.[0] | {name, guid: $guid, crn, db_service: $svc, service_endpoints: $ep, public_endpoints: $endpoints}')
+    PUBLIC_ENDPOINT_DBS=$(echo "$PUBLIC_ENDPOINT_DBS" | jq -c --argjson e "$ENTRY" '. + [$e]')
+done < <(echo "$DBS_JSON" | jq -c '.[]')
 
 # Save all databases to the output file
 echo "$DBS_JSON" | jq '.' > "$OUTPUT_PATH"
@@ -223,6 +272,7 @@ if [[ $(echo "$PUBLIC_ENDPOINT_DBS" | jq 'length') -gt 0 ]]; then
     : > "$PUBLIC_ENDPOINT_OUTPUT_PATH" || failure "Error while creating the output file: ${BOLD}$PUBLIC_ENDPOINT_OUTPUT_PATH${RESET}"
     echo "$PUBLIC_ENDPOINT_DBS" | jq '.' > "$PUBLIC_ENDPOINT_OUTPUT_PATH"
     echo -e "${BOLD}Databases with public endpoint: $PUBLIC_COUNT${RESET}"
+    echo "$PUBLIC_ENDPOINT_DBS" | jq -r '.[] | "  - \(.name) (\(.db_service)): \(if (.public_endpoints | length) > 0 then (.public_endpoints | join(", ")) else "endpoint not retrieved" end)"'
     echo -e "Databases with public endpoint saved to: ${BOLD}${PUBLIC_ENDPOINT_OUTPUT_PATH}${RESET}"
 else
     echo -e "${BOLD}Databases with public endpoint: 0${RESET}"
@@ -233,6 +283,7 @@ if [ "$DEBUG" = true ]; then
     echo -e "${BOLD}[DEBUG]${RESET} Summary:"
     echo -e "${BOLD}[DEBUG]${RESET}   Cloud Databases: $CDB_COUNT"
     echo -e "${BOLD}[DEBUG]${RESET}   DB2 Instances: $DB2_COUNT"
+    echo -e "${BOLD}[DEBUG]${RESET}   Cloudant Instances: $CLOUDANT_COUNT"
     echo -e "${BOLD}[DEBUG]${RESET}   Total: $TOTAL_DBS"
     echo -e "${BOLD}[DEBUG]${RESET}   Public Endpoints: $PUBLIC_COUNT"
 fi
