@@ -224,10 +224,13 @@ Enumerates all IBM Cloud Schematics workspaces in each enabled region. Output ca
 Enumerates all IBM Cloud Kubernetes/Openshift clusters. Also generates a separate file for clusters with public endpoint enabled.
 
 #### - [get_databases](bash/get_databases.sh) / [get_databases.py](python/get_databases.py)
-Enumerates all IBM Cloud Databases. Also generates a separate file for databases with public endpoint enabled.
+Enumerates all IBM Cloud Databases (Cloud Databases, DB2 and Cloudant). Also generates a separate file for databases with public endpoint enabled, including their public endpoints (`hostname:port`).
 
 #### - [get_security_groups](bash/get_security_groups.sh) / [get_security_groups.py](python/get_security_groups.py)
 Enumerates all IBM Cloud VPC security groups and identifies overly permissive inbound rules.
+
+#### - [get_load_balancers](bash/get_load_balancers.sh) / [get_load_balancers.py](python/get_load_balancers.py)
+Enumerates all IBM Cloud VPC Load Balancers in each enabled region, with their listeners, pools and subnets. Also generates a separate file for public load balancers, including their public endpoints (`hostname:port`).
 
 #### - [get_code_engine](bash/get_code_engine.sh) / [get_code_engine.py](python/get_code_engine.py)
 Enumerates all IBM Cloud Code Engine projects. For each project, retrieves Applications (including environment variables and public endpoint status), Functions, ConfigMaps, and Secrets.
@@ -274,9 +277,6 @@ Enumerates all IBM Cloud Code Engine projects. For each project, retrieves Appli
 ## TODO
 - Support for handling multiple IBM Cloud accounts in batch mode across all enumeration scripts.
 - Implement pagination support in all modules.
-- Support Cloudant DBs.
-- Retrieve public endpoints (hostname:port) of public DBs.
-- Enumerate Load Balancer resources.
 
 ---
 
