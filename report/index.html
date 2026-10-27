@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<!-- Fully offline page: the CSP blocks every network request so customer data can never leave this computer. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
+<script>
+/* Apply the saved (or OS preferred) theme before first paint to avoid a light flash. */
+(function () {
+  var theme = null;
+  try { theme = localStorage.getItem('ibm-toolkit-report-theme'); } catch (e) { /* storage unavailable */ }
+  if (theme !== 'dark' && theme !== 'light') theme = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', theme);
+})();
+</script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IBM Cloud ToolKit – Enumeration report</title>
+<style>
+/* IBM Carbon Design System (White theme, UI shell in Gray 100). Hand-written tokens so the page works offline. */
+:root {
+  --bg: #f4f4f4;
+  --layer: #ffffff;
+  --layer-hover: #e8e8e8;
+  --layer-accent: #e0e0e0;
+  --border: #e0e0e0;
+  --border-strong: #8d8d8d;
+  --text: #161616;
+  --text-2: #525252;
+  --text-helper: #6f6f6f;
+  --primary: #0f62fe;
+  --primary-hover: #0353e9;
+  --primary-active: #002d9c;
+  --secondary: #393939;
+  --secondary-hover: #474747;
+  --secondary-active: #6f6f6f;
+  --focus: #0f62fe;
+  --link: #0f62fe;
+  --link-hover: #0043ce;
+  --shell: #161616;
+  --shell-text: #f4f4f4;
+  --font: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --mono: "IBM Plex Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --field: #f4f4f4;
+  --text-disabled: #c6c6c6;
+  --focus-inner: #ffffff;
+  --th-hover: #cacaca;
+  --pop: #393939;
+  --pop-hover: #474747;
+  --drag-text: #0043ce;
+  --tag-blue-bg: #d0e2ff;   --tag-blue-fg: #0043ce;
+  --tag-red-bg: #ffd7d9;    --tag-red-fg: #a2191f;
+  --tag-green-bg: #a7f0ba;  --tag-green-fg: #044317;
+  --notif-bg: #edf5ff;      --notif-border: #a6c8ff;  --notif-accent: #0043ce;
+  --notif-err-bg: #fff1f1;  --notif-err-border: #ffb3b8;  --notif-err-accent: #da1e28;
+  color-scheme: light;
+}
+/* Carbon Gray 100 theme */
+:root[data-theme="dark"] {
+  --bg: #161616;
+  --layer: #262626;
+  --layer-hover: #333333;
+  --layer-accent: #393939;
+  --border: #393939;
+  --border-strong: #6f6f6f;
+  --text: #f4f4f4;
+  --text-2: #c6c6c6;
+  --text-helper: #a8a8a8;
+  --primary-hover: #0353e9;
+  --secondary: #6f6f6f;
+  --secondary-hover: #606060;
+  --secondary-active: #393939;
+  --focus: #ffffff;
+  --link: #78a9ff;
+  --link-hover: #a6c8ff;
+  --field: #393939;
+  --text-disabled: #6f6f6f;
+  --focus-inner: #161616;
+  --th-hover: #4c4c4c;
+  --pop: #393939;
+  --pop-hover: #4c4c4c;
+  --drag-text: #a6c8ff;
+  --tag-blue-bg: #002d9c;   --tag-blue-fg: #a6c8ff;
+  --tag-red-bg: #750e13;    --tag-red-fg: #ffb3b8;
+  --tag-green-bg: #044317;  --tag-green-fg: #a7f0ba;
+  --notif-bg: #393939;      --notif-border: #525252;  --notif-accent: #4589ff;
+  --notif-err-bg: #393939;  --notif-err-border: #525252;  --notif-err-accent: #fa4d56;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { font-size: 16px; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font-family: var(--font); font-size: 14px; line-height: 1.29; letter-spacing: .16px;
+}
+code, .mono { font-family: var(--mono); font-size: 13px; }
+button { font-family: inherit; }
+[hidden] { display: none !important; }
+
+/* UI shell header */
+.shell {
+  position: sticky; top: 0; z-index: 40; height: 48px; display: flex; align-items: center; gap: 16px;
+  padding: 0 16px; background: var(--shell); color: var(--shell-text); border-bottom: 1px solid #393939;
+}
+.shell .brand { font-size: 14px; letter-spacing: .1px; }
+.shell .brand b { font-weight: 600; }
+.shell .sep { width: 1px; height: 24px; background: #393939; }
+.shell .title { color: #c6c6c6; }
+
+/* Theme switch (Carbon toggle) */
+.theme-switch {
+  display: inline-flex; align-items: center; gap: 12px; margin-left: auto; padding: 0 8px; height: 32px;
+  background: none; border: 0; color: #c6c6c6; font: inherit; font-size: 12px; letter-spacing: .32px; cursor: pointer;
+}
+.theme-switch .track {
+  position: relative; flex: none; width: 32px; height: 16px; border-radius: 8px; background: #8d8d8d; transition: background 70ms;
+}
+.theme-switch .track::after {
+  content: ""; position: absolute; top: 3px; left: 3px; width: 10px; height: 10px; border-radius: 50%; background: #fff; transition: transform 70ms;
+}
+.theme-switch[aria-checked="true"] .track { background: #24a148; }
+.theme-switch[aria-checked="true"] .track::after { transform: translateX(16px); }
+.theme-switch:hover { color: #f4f4f4; }
+.theme-switch:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+
+main { max-width: 1584px; margin: 0 auto; padding: 32px 32px 64px; }
+h1 { margin: 0 0 8px; font-size: 32px; line-height: 40px; font-weight: 400; letter-spacing: 0; }
+.lead { margin: 0 0 24px; max-width: 720px; color: var(--text-2); font-size: 16px; line-height: 24px; }
+.helper { color: var(--text-helper); font-size: 12px; line-height: 16px; letter-spacing: .32px; }
+
+/* Buttons */
+.btn {
+  display: inline-flex; align-items: center; gap: 12px; height: 40px; padding: 0 16px; border: 1px solid transparent;
+  font-size: 14px; letter-spacing: .16px; cursor: pointer; white-space: nowrap; border-radius: 0;
+}
+.btn.lg { height: 48px; }
+.btn svg { flex: none; }
+.btn.primary { background: var(--primary); color: #fff; }
+.btn.primary:hover { background: var(--primary-hover); }
+.btn.primary:active { background: var(--primary-active); }
+.btn.secondary { background: var(--secondary); color: #fff; }
+.btn.secondary:hover { background: var(--secondary-hover); }
+.btn.secondary:active { background: var(--secondary-active); }
+.btn:focus-visible, .acc-btn:focus-visible, .th-btn:focus-visible, .menu-item:focus-visible {
+  outline: none; box-shadow: inset 0 0 0 1px var(--focus), inset 0 0 0 2px var(--focus-inner);
+}
+.acc-btn:focus-visible, .th-btn:focus-visible, .menu-item:focus-visible { box-shadow: inset 0 0 0 2px var(--focus); }
+
+/* Data source tile */
+.tile { background: var(--layer); padding: 16px; margin-bottom: 24px; }
+.source-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 16px 24px; }
+.field { display: grid; gap: 8px; min-width: 320px; }
+.field .label { color: var(--text-2); font-size: 12px; line-height: 16px; letter-spacing: .32px; }
+select {
+  appearance: none; height: 40px; width: 100%; padding: 0 40px 0 16px; color: var(--text); background-color: var(--field);
+  border: 0; border-bottom: 1px solid var(--border-strong); border-radius: 0; font: inherit; letter-spacing: .16px; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23161616'%3E%3Cpath d='M8 11L3 6l.7-.7L8 9.6l4.3-4.3.7.7z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 16px center; background-size: 16px;
+}
+:root[data-theme="dark"] select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23f4f4f4'%3E%3Cpath d='M8 11L3 6l.7-.7L8 9.6l4.3-4.3.7.7z'/%3E%3C/svg%3E");
+}
+select:disabled { color: var(--text-disabled); cursor: not-allowed; }
+select:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.source-help { margin: 16px 0 0; max-width: 900px; }
+
+/* Accordions (modules and sections) */
+.module { background: var(--layer); margin-bottom: 16px; }
+.acc { border-top: 1px solid var(--border); }
+.acc:last-child { border-bottom: 1px solid var(--border); }
+.module > .acc { border-bottom: 1px solid var(--border); }
+.acc-heading { margin: 0; font-weight: 400; }
+.acc-btn {
+  display: flex; align-items: center; gap: 12px; width: 100%; min-height: 48px; padding: 8px 16px; border: 0;
+  background: none; color: var(--text); text-align: left; cursor: pointer; font-size: 16px; letter-spacing: 0;
+}
+.acc-btn:hover { background: var(--layer-hover); }
+.acc-btn .chev { flex: none; transition: transform 110ms; }
+.acc-btn[aria-expanded="true"] .chev { transform: rotate(90deg); }
+.acc-1 > .acc-heading .acc-btn { min-height: 56px; font-size: 20px; line-height: 28px; }
+.acc-title { flex: 0 1 auto; }
+.acc-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-left: auto; }
+.acc-body { padding: 0; }
+.acc-1 > .acc-body { padding: 0 0 16px; }
+.acc-2 > .acc-body { padding: 0 16px 16px 44px; }
+.acc-note { margin: 0 0 12px; max-width: 800px; }
+.script-tag { font-family: var(--mono); font-size: 12px; color: var(--text-2); }
+.tag {
+  display: inline-flex; align-items: center; height: 24px; padding: 0 8px; border-radius: 24px;
+  background: var(--layer-accent); color: var(--text); font-size: 12px; letter-spacing: .32px; white-space: nowrap;
+}
+.tag.blue { background: var(--tag-blue-bg); color: var(--tag-blue-fg); }
+.tag.red { background: var(--tag-red-bg); color: var(--tag-red-fg); }
+.tag.green { background: var(--tag-green-bg); color: var(--tag-green-fg); }
+
+/* Inline notification */
+.notif {
+  display: flex; gap: 12px; padding: 12px 16px; max-width: 800px; background: var(--notif-bg);
+  border: 1px solid var(--notif-border); border-left: 3px solid var(--notif-accent); color: var(--text);
+}
+.notif.error { background: var(--notif-err-bg); border-color: var(--notif-err-border); border-left-color: var(--notif-err-accent); }
+.notif strong { display: block; font-weight: 600; margin-bottom: 2px; }
+.notif p { margin: 0; color: var(--text-2); }
+
+/* Data table */
+.dt { background: var(--layer); }
+.dt-toolbar { display: flex; align-items: center; flex-wrap: wrap; background: var(--field); min-height: 48px; }
+.dt-search { position: relative; flex: 1 1 240px; min-width: 200px; }
+.dt-search svg { position: absolute; left: 16px; top: 16px; fill: var(--text-2); pointer-events: none; }
+.dt-search input {
+  width: 100%; height: 48px; padding: 0 16px 0 48px; border: 0; border-bottom: 1px solid transparent;
+  background: transparent; color: var(--text); font: inherit; letter-spacing: .16px;
+}
+.dt-search input::placeholder { color: var(--text-helper); }
+.dt-search input:focus { outline: 2px solid var(--focus); outline-offset: -2px; background: var(--layer); }
+.dt-count { padding: 0 16px; color: var(--text-2); font-size: 12px; letter-spacing: .32px; white-space: nowrap; }
+.dt-dates { display: flex; align-items: center; gap: 8px; padding: 0 16px; }
+.dt-date { display: flex; align-items: center; gap: 8px; color: var(--text-2); font-size: 12px; letter-spacing: .32px; white-space: nowrap; }
+.dt-date input {
+  height: 32px; padding: 0 8px; border: 0; border-bottom: 1px solid var(--border-strong); background: var(--layer);
+  color: var(--text); font: inherit; font-size: 14px;
+}
+.dt-date input:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.dt-actions { display: flex; }
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+th {
+  height: 40px; padding: 0; background: var(--layer-accent); text-align: left; font-weight: 600;
+  border-bottom: 1px solid var(--layer-accent); white-space: nowrap;
+}
+.secret-cell { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
+.secret-cell input {
+  flex: none; height: 32px; padding: 0 8px; border: 0; border-bottom: 1px solid var(--border-strong);
+  background: var(--field); color: var(--text); font-family: var(--mono); font-size: 13px;
+}
+.secret-cell input:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.icon-btn {
+  display: inline-flex; align-items: center; justify-content: center; flex: none; width: 32px; height: 32px; padding: 0;
+  border: 0; background: none; color: var(--text); cursor: pointer;
+}
+td a { color: var(--link); }
+td a:hover { color: var(--link-hover); }
+.icon-btn:hover { background: var(--layer-hover); }
+.icon-btn:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.th-static { padding: 0 16px; }
+.th-btn {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; height: 40px; padding: 0 16px;
+  background: none; border: 0; color: var(--text); font: inherit; font-weight: 600; letter-spacing: .16px; cursor: pointer; text-align: left;
+}
+.th-btn:hover { background: var(--th-hover); }
+.th-btn svg { fill: var(--text); opacity: 0; transition: transform 110ms; }
+.th-btn:hover svg { opacity: .6; }
+th[aria-sort="ascending"] .th-btn svg, th[aria-sort="descending"] .th-btn svg { opacity: 1; }
+th[aria-sort="descending"] .th-btn svg { transform: rotate(180deg); }
+td { height: 40px; padding: 8px 16px; border-bottom: 1px solid var(--border); vertical-align: middle; overflow-wrap: anywhere; }
+td.mono { white-space: nowrap; overflow-wrap: normal; }
+tbody tr:hover td { background: var(--layer-hover); }
+.empty-row td { height: 96px; text-align: center; color: var(--text-2); }
+
+/* Overflow menu */
+.menu-wrap { position: relative; }
+.menu {
+  position: absolute; right: 0; top: 100%; z-index: 30; min-width: 240px; margin: 0; padding: 0; list-style: none;
+  background: var(--pop); box-shadow: 0 2px 6px rgba(0, 0, 0, .3);
+}
+.menu-item {
+  display: block; width: 100%; height: 40px; padding: 0 16px; border: 0; background: none; color: #fff;
+  text-align: left; font: inherit; letter-spacing: .16px; cursor: pointer;
+}
+.menu-item:hover { background: var(--pop-hover); }
+
+/* Toast */
+.toasts { position: fixed; top: 56px; right: 16px; z-index: 50; display: grid; gap: 8px; }
+.toast {
+  min-width: 288px; max-width: 420px; padding: 12px 16px; background: var(--pop); color: #fff;
+  border-left: 3px solid #42be65; box-shadow: 0 2px 6px rgba(0, 0, 0, .3);
+}
+.toast.error { border-left-color: #fa4d56; }
+
+/* Empty state + drag overlay */
+.empty-state { padding: 48px 16px; text-align: center; }
+.empty-state h2 { margin: 0 0 8px; font-size: 20px; line-height: 28px; font-weight: 400; }
+.empty-state p { margin: 0 auto; max-width: 560px; color: var(--text-2); }
+body.dragging::after {
+  content: "Drop the output folder to load it"; position: fixed; inset: 0; z-index: 60; display: grid; place-items: center;
+  background: rgba(15, 98, 254, .12); border: 2px dashed var(--primary); color: var(--drag-text); font-size: 20px; pointer-events: none;
+}
+@media (max-width: 672px) {
+  main { padding: 16px 16px 48px; }
+  .acc-2 > .acc-body { padding-left: 16px; }
+  .field { min-width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<header class="shell">
+  <span class="brand"><b>IBM</b> Cloud ToolKit</span>
+  <span class="sep" aria-hidden="true"></span>
+  <span class="title">Enumeration report</span>
+  <button class="theme-switch" id="themeSwitch" type="button" role="switch" aria-checked="false">
+    <span>Dark mode</span><span class="track" aria-hidden="true"></span>
+  </button>
+</header>
+
+<main>
+  <h1>Enumeration report</h1>
+  <p class="lead">Browse the results of an enumeration run, module by module. Everything is read locally in your browser &ndash; no data is uploaded anywhere.</p>
+
+  <section class="tile" aria-label="Data source">
+    <div class="source-row">
+      <button class="btn primary lg" id="pick" type="button">Select folder</button>
+      <input type="file" id="picker" webkitdirectory multiple hidden>
+      <label class="field">
+        <span class="label">Output directory</span>
+        <select id="runSelect" disabled><option>No folder loaded</option></select>
+      </label>
+      <span class="helper" id="runMeta"></span>
+    </div>
+    <p class="helper source-help">
+      Select the folder that holds your <code>output_YYYYMMDD_HHMMSS</code> directories (for example the repository root),
+      or a single output folder directly. You can also drag and drop it onto this page. The latest run is selected
+      automatically; the legacy <code>output</code> folder is used when no time-bound run exists.
+    </p>
+  </section>
+
+  <noscript><div class="notif error"><div><strong>JavaScript is required</strong><p>This report is rendered in your browser.</p></div></div></noscript>
+  <div id="modules"></div>
+</main>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<script>
+'use strict';
+
+/* ───────────────────────── Module registry ─────────────────────────
+   Every enumeration module is described here. To add a module, append an entry:
+   each section maps to one result file of a run and is rendered as a table. */
+const API_KEY_COLUMNS = [
+  { key: 'id',         label: 'ID', mono: true },
+  { key: 'name',       label: 'Name' },
+  { key: 'created_at', label: 'Created at', mono: true, date: true },
+  { key: 'created_by', label: 'Created by' },
+  { key: 'status',     label: 'Status', tag: true },
+];
+
+/** Derive the Status text from the fields written by get_api_keys ("active", "disabled"). Older runs have no "active" field. */
+function withApiKeyStatus(row) {
+  let status = 'Unknown';
+  if (row.active === true) status = 'Active';
+  else if (row.active === false) status = row.disabled === true ? 'Inactive (disabled)' : 'Inactive (expired)';
+  return { ...row, status };
+}
+
+/* Service API keys (get_service_api_keys). The secret "apikey" value is shown in a masked, read-only field that is
+   revealed with the eye button (column flag "secret"). Secret columns are left out of the text filter, sorting and all copy formats. */
+const SERVICE_KEY_COLUMNS = [
+  { key: 'service_name', label: 'Service name' },
+  { key: 'service_id',   label: 'Service ID', mono: true },
+  { key: 'name',         label: 'Key name' },
+  { key: 'id',           label: 'Key ID', mono: true },
+  { key: 'description',  label: 'Description' },
+  { key: 'created_at',   label: 'Created at', mono: true, date: true },
+  { key: 'created_by',   label: 'Created by' },
+  { key: 'expires_at',   label: 'Expires at', mono: true },
+  { key: 'status',       label: 'Status', tag: true, hideWithoutField: 'active' },
+  { key: 'locked_text',  label: 'Locked' },
+  { key: 'exposed',      label: 'Key exposed', tag: true, tagClass: t => (t === 'Yes' ? 'red' : t === 'No' ? 'green' : '') },
+  { key: 'browser_url',  label: 'Browser URL', mono: true, link: true },
+  { key: 'apikey',       label: 'API key', secret: true },
+];
+
+function withServiceKeyInfo(row) {
+  const yesNo = v => (v === true ? 'Yes' : v === false ? 'No' : '');
+  return {
+    ...withApiKeyStatus(row),
+    expires_at: row.expires_at || 'Never',
+    locked_text: yesNo(row.locked),
+    exposed: row.apikey ? 'Yes' : 'No',
+  };
+}
+
+const MODULES = [
+  {
+    id: 'api-keys',
+    title: 'API keys',
+    script: 'get_api_keys',
+    sections: [
+      {
+        id: 'all',
+        title: 'All API keys',
+        file: 'api_keys.txt',
+        columns: API_KEY_COLUMNS,
+        prepare: withApiKeyStatus,
+        unique: { key: 'id', noun: 'API key IDs' },
+        missing: 'api_keys.txt was not found in this run. Run get_api_keys (or the full runner) to generate it.',
+      },
+      {
+        id: 'non-rotated',
+        title: 'API keys not rotated in the last 90 days',
+        note: 'Uses the rotation threshold of the run (get_api_keys -d, default 90 days).',
+        file: 'non_rotated_api_keys.txt',
+        columns: API_KEY_COLUMNS,
+        prepare: withApiKeyStatus,
+        unique: { key: 'id', noun: 'API key IDs' },
+        missing: 'non_rotated_api_keys.txt was not found. get_api_keys only writes this file when at least one key is older ' +
+                 'than the rotation threshold, so all keys may be within the threshold (or the module was not run).',
+      },
+    ],
+  },
+  {
+    id: 'service-api-keys',
+    title: 'Service API keys',
+    script: 'get_service_api_keys',
+    sections: [
+      {
+        id: 'all',
+        title: 'All Service API keys',
+        file: 'service_api_keys.json',
+        columns: SERVICE_KEY_COLUMNS,
+        prepare: withServiceKeyInfo,
+        unique: { key: 'id', noun: 'API key IDs' },
+        missing: 'service_api_keys.json was not found in this run. Run get_service_api_keys (or the full runner) to generate it.',
+      },
+      {
+        id: 'exposed',
+        title: 'Service API keys with an exposed key value',
+        note: 'The API returned the secret key value for these keys, so anyone with access to the output can use them. ' +
+              'The value is masked; use the eye button to reveal it. It is never included in filters or copied tables.',
+        file: 'leaked_service_api_keys.json',
+        columns: SERVICE_KEY_COLUMNS,
+        prepare: withServiceKeyInfo,
+        unique: { key: 'id', noun: 'API key IDs' },
+        missing: 'leaked_service_api_keys.json was not found. get_service_api_keys only writes this file when at least one key ' +
+                 'exposes its value, so there may be none (or the module was not run).',
+      },
+      {
+        id: 'non-rotated',
+        title: 'Service API keys not rotated in the last 90 days',
+        note: 'Uses the rotation threshold of the run (get_service_api_keys -d, default 90 days).',
+        file: 'non_rotated_service_api_keys.json',
+        columns: SERVICE_KEY_COLUMNS,
+        prepare: withServiceKeyInfo,
+        unique: { key: 'id', noun: 'API key IDs' },
+        missing: 'non_rotated_service_api_keys.json was not found. get_service_api_keys only writes this file when at least one key ' +
+                 'is older than the rotation threshold, so all keys may be within the threshold (or the module was not run).',
+      },
+    ],
+  },
+];
+
+/* ───────────────────────── Helpers ───────────────────────── */
+const RUN_RE = /^output(?:_(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2}))?$/;
+const SKIP_DIRS = new Set(['.git', 'venv', '.venv', 'node_modules', '__pycache__']);
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const SVG_NS = 'http://www.w3.org/2000/svg';
+const ICONS = {
+  chevron: { vb: '0 0 16 16', d: 'M11 8L6 13 5.3 12.3 9.6 8 5.3 3.7 6 3z' },
+  caret:   { vb: '0 0 16 16', d: 'M8 11L3 6l.7-.7L8 9.6l4.3-4.3.7.7z' },
+  search:  { vb: '0 0 32 32', d: 'M29 27.586l-7.552-7.552a11.018 11.018 0 10-1.414 1.414L27.586 29zM4 13a9 9 0 119 9 9.01 9.01 0 01-9-9z' },
+  copy:    { vb: '0 0 32 32', d: 'M28 10v18H10V10h18m0-2H10a2 2 0 00-2 2v18a2 2 0 002 2h18a2 2 0 002-2V10a2 2 0 00-2-2z M4 18H2V4a2 2 0 012-2h14v2H4z' },
+  folder:  { vb: '0 0 32 32', d: 'M11.17 6l3.42 3.41.58.59H28v16H4V6h7.17m0-2H4a2 2 0 00-2 2v20a2 2 0 002 2h24a2 2 0 002-2V10a2 2 0 00-2-2H16l-3.41-3.41A2 2 0 0011.17 4z' },
+  arrowUp: { vb: '0 0 32 32', d: 'M16 4l-8 8 1.4 1.4L15 7.8V28h2V7.8l5.6 5.6L24 12z' },
+  view:    { vb: '0 0 32 32', d: 'M30.94 15.66A16.69 16.69 0 0016 5 16.69 16.69 0 001.06 15.66a1 1 0 000 .68A16.69 16.69 0 0016 27a16.69 16.69 0 0014.94-10.66 1 1 0 000-.68zM16 25c-5.3 0-10.9-3.93-12.93-9C5.1 10.93 10.7 7 16 7s10.9 3.93 12.93 9C26.9 21.07 21.3 25 16 25z M16 10a6 6 0 106 6 6 6 0 00-6-6zm0 10a4 4 0 114-4 4 4 0 01-4 4z' },
+  viewOff: { vb: '0 0 32 32', d: 'M5.24 22.51l1.43-1.42A14.06 14.06 0 013.07 16C5.1 10.93 10.7 7 16 7a12.38 12.38 0 014 .72l1.55-1.56A14.72 14.72 0 0016 5 16.69 16.69 0 001.06 15.66a1 1 0 000 .68 16 16 0 004.18 6.17z M12 15.73a4 4 0 013.7-3.7l1.81-1.82a6 6 0 00-7.33 7.33zm18.94-.07a16.4 16.4 0 00-5.74-7.44L30 3.41 28.59 2 2 28.59 3.41 30l5.1-5.1A15.29 15.29 0 0016 27a16.69 16.69 0 0014.94-10.66 1 1 0 000-.68zM20 16a4 4 0 01-6 3.44L19.44 14A4 4 0 0120 16zm-4 9a13.05 13.05 0 01-6-1.58l2.54-2.54a6 6 0 008.35-8.35l2.87-2.87A14.54 14.54 0 0128.93 16C26.9 21.07 21.3 25 16 25z' },
+};
+
+/** Safe DOM builder: strings are always appended as text nodes, never parsed as HTML. */
+function el(tag, attrs, ...kids) {
+  const n = document.createElement(tag);
+  if (attrs) {
+    for (const [k, v] of Object.entries(attrs)) {
+      if (v == null || v === false) continue;
+      if (k === 'class') n.className = v;
+      else n.setAttribute(k, v === true ? '' : v);
+    }
+  }
+  for (const c of kids.flat()) if (c != null && c !== false) n.append(c);
+  return n;
+}
+
+function icon(name, cls) {
+  const { vb, d } = ICONS[name];
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('viewBox', vb);
+  svg.setAttribute('width', '16');
+  svg.setAttribute('height', '16');
+  svg.setAttribute('fill', 'currentColor');
+  svg.setAttribute('aria-hidden', 'true');
+  if (cls) svg.setAttribute('class', cls);
+  const path = document.createElementNS(SVG_NS, 'path');
+  path.setAttribute('d', d);
+  svg.append(path);
+  return svg;
+}
+
+const cellText = v => (v == null ? '' : typeof v === 'object' ? JSON.stringify(v) : String(v));
+const oneLine = s => s.replace(/[\t\r\n]+/g, ' ');
+const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+const pad2 = n => String(n).padStart(2, '0');
+const formatRunDate = d => `${pad2(d.getDate())} ${MONTHS[d.getMonth()]} ${d.getFullYear()}, ${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
+
+function toast(message, kind) {
+  const t = el('div', { class: 'toast' + (kind === 'error' ? ' error' : ''), role: 'status' }, message);
+  document.getElementById('toasts').append(t);
+  setTimeout(() => t.remove(), kind === 'error' ? 6000 : 3500);
+}
+
+/* ───────────────────────── Run discovery ───────────────────────── */
+/** Group picked files into runs (output_YYYYMMDD_HHMMSS or legacy "output"), newest first. */
+function buildRuns(entries) {
+  const runs = new Map();
+  const newRun = name => {
+    const m = RUN_RE.exec(name);
+    const ts = m && m[1] ? new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]) : null;
+    return { name, ts, files: new Map() };
+  };
+
+  for (const e of entries) {
+    const parts = e.path.split('/');
+    // The run folder is the picked folder itself (index 0) or a direct child of it (index 1).
+    let idx = -1;
+    for (let i = 0; i <= 1 && i < parts.length - 1; i++) {
+      if (RUN_RE.test(parts[i])) { idx = i; break; }
+    }
+    if (idx < 0) continue;
+    if (!runs.has(parts[idx])) runs.set(parts[idx], newRun(parts[idx]));
+    runs.get(parts[idx]).files.set(parts.slice(idx + 1).join('/'), e.file);
+  }
+
+  // Fallback: the picked folder is itself a run, just not named output*.
+  if (!runs.size && entries.length) {
+    const root = entries[0].path.split('/')[0];
+    const run = newRun(root);
+    for (const e of entries) {
+      const parts = e.path.split('/');
+      run.files.set(parts.length > 1 ? parts.slice(1).join('/') : parts[0], e.file);
+    }
+    runs.set(root, run);
+  }
+
+  return [...runs.values()].sort((a, b) =>
+    (b.ts ? b.ts.getTime() : -1) - (a.ts ? a.ts.getTime() : -1) || a.name.localeCompare(b.name));
+}
+
+/* ───────────────────────── Folder reading (drag & drop) ───────────────────────── */
+const readAll = dir => new Promise((resolve, reject) => {
+  const reader = dir.createReader();
+  const out = [];
+  (function next() {
+    reader.readEntries(batch => { if (!batch.length) resolve(out); else { out.push(...batch); next(); } }, reject);
+  })();
+});
+const fileOf = fileEntry => new Promise((resolve, reject) => fileEntry.file(resolve, reject));
+
+async function walk(entry, prefix, out) {
+  if (entry.isFile) { out.push({ path: prefix + entry.name, file: await fileOf(entry) }); return; }
+  if (SKIP_DIRS.has(entry.name)) return;
+  for (const child of await readAll(entry)) await walk(child, prefix + entry.name + '/', out);
+}
+
+async function entriesFromDrop(dataTransfer) {
+  const top = [...dataTransfer.items].map(i => (i.webkitGetAsEntry ? i.webkitGetAsEntry() : null)).filter(Boolean);
+  const out = [];
+  for (const entry of top) {
+    if (entry.isFile) { await walk(entry, '', out); continue; }
+    if (RUN_RE.test(entry.name)) { await walk(entry, '', out); continue; }
+    // Dropped a parent folder: only descend into the run folders instead of the whole tree.
+    const runDirs = (await readAll(entry)).filter(k => k.isDirectory && RUN_RE.test(k.name));
+    if (runDirs.length) for (const k of runDirs) await walk(k, entry.name + '/', out);
+    else await walk(entry, '', out);
+  }
+  return out;
+}
+
+/* ───────────────────────── Copy formats ───────────────────────── */
+function matrix(columns, rows) {
+  return { head: columns.map(c => c.label), body: rows.map(r => columns.map(c => oneLine(cellText(r[c.key])))) };
+}
+
+function toPlainText(head, body) {
+  const all = [head, ...body];
+  const widths = head.map((_, i) => all.reduce((m, r) => Math.max(m, r[i].length), 0));
+  const line = r => r.map((c, i) => c.padEnd(widths[i])).join('  ').trimEnd();
+  return [line(head), widths.map(w => '-'.repeat(w)).join('  '), ...body.map(line)].join('\n');
+}
+
+function toMarkdown(head, body) {
+  const esc = s => s.replace(/\\/g, '\\\\').replace(/\|/g, '\\|');
+  const row = r => `| ${r.map(esc).join(' | ')} |`;
+  return [row(head), row(head.map(() => '---')), ...body.map(row)].join('\n');
+}
+
+/** Tab-separated, pasted into Excel as cells. Cells that could be read as a formula get a leading apostrophe. */
+function toExcel(head, body) {
+  const safe = s => (/^[=+\-@]/.test(s) ? "'" + s : s);
+  return [head, ...body].map(r => r.map(safe).join('\t')).join('\n');
+}
+
+const escapeHtml = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+function toWordHtml(head, body) {
+  const th = 'border:1px solid #8d8d8d;background:#e0e0e0;padding:4px 8px;text-align:left';
+  const td = 'border:1px solid #8d8d8d;padding:4px 8px';
+  return '<table style="border-collapse:collapse;font-family:Calibri,Arial,sans-serif;font-size:11pt">' +
+    '<thead><tr>' + head.map(c => `<th style="${th}">${escapeHtml(c)}</th>`).join('') + '</tr></thead>' +
+    '<tbody>' + body.map(r => '<tr>' + r.map(c => `<td style="${td}">${escapeHtml(c)}</td>`).join('') + '</tr>').join('') + '</tbody></table>';
+}
+
+const FORMATS = [
+  { id: 'text',     label: 'Plain text',             build: (h, b) => ({ text: toPlainText(h, b) }) },
+  { id: 'markdown', label: 'Markdown',               build: (h, b) => ({ text: toMarkdown(h, b) }) },
+  { id: 'excel',    label: 'Excel (tab-separated)',  build: (h, b) => ({ text: toExcel(h, b) }) },
+  { id: 'word',     label: 'Word (formatted table)', build: (h, b) => ({ text: toPlainText(h, b), html: toWordHtml(h, b) }) },
+];
+
+/** Unique, non-empty values of one column in first-seen order, plus how many duplicates were dropped. */
+function uniqueValues(rows, key) {
+  const seen = new Set();
+  const values = [];
+  let duplicates = 0;
+  for (const r of rows) {
+    const v = cellText(r[key]).trim();
+    if (!v) continue;
+    if (seen.has(v)) { duplicates++; continue; }
+    seen.add(v);
+    values.push(v);
+  }
+  return { values, duplicates };
+}
+
+/* ───────────────────────── Clipboard ───────────────────────── */
+function legacyCopy({ text, html }) {
+  const ta = el('textarea', { 'aria-hidden': 'true', style: 'position:fixed;top:-1000px;opacity:0' });
+  ta.value = text || ' ';
+  document.body.append(ta);
+  ta.select();
+  const onCopy = e => {
+    e.clipboardData.setData('text/plain', text);
+    if (html) e.clipboardData.setData('text/html', html);
+    e.preventDefault();
+  };
+  document.addEventListener('copy', onCopy);
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch (_) { ok = false; }
+  document.removeEventListener('copy', onCopy);
+  ta.remove();
+  return ok;
+}
+
+async function copyPayload(payload) {
+  try {
+    if (navigator.clipboard && window.ClipboardItem && payload.html) {
+      await navigator.clipboard.write([new ClipboardItem({
+        'text/plain': new Blob([payload.text], { type: 'text/plain' }),
+        'text/html': new Blob([payload.html], { type: 'text/html' }),
+      })]);
+      return true;
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText && !payload.html) {
+      await navigator.clipboard.writeText(payload.text);
+      return true;
+    }
+  } catch (_) { /* fall through to the legacy path (e.g. file:// without clipboard permission) */ }
+  return legacyCopy(payload);
+}
+
+/* ───────────────────────── UI components ───────────────────────── */
+let idCounter = 0;
+
+function collapsible({ level, title, tags, script, note, open, content }) {
+  const bodyId = 'acc-body-' + (++idCounter);
+  const Heading = level === 1 ? 'h2' : 'h3';
+  const btn = el('button', { class: 'acc-btn', type: 'button', 'aria-expanded': String(!!open), 'aria-controls': bodyId },
+    icon('chevron', 'chev'),
+    el('span', { class: 'acc-title' }, title),
+    script ? el('span', { class: 'script-tag' }, script) : null,
+    el('span', { class: 'acc-tags' }, (tags || []).map(t => el('span', { class: 'tag ' + (t.cls || '') }, t.text))));
+  const body = el('div', { class: 'acc-body', id: bodyId }, note ? el('p', { class: 'helper acc-note' }, note) : null, content);
+  body.hidden = !open;
+  btn.addEventListener('click', () => {
+    const expanded = btn.getAttribute('aria-expanded') === 'true';
+    btn.setAttribute('aria-expanded', String(!expanded));
+    body.hidden = expanded;
+  });
+  return el('section', { class: 'acc acc-' + level }, el(Heading, { class: 'acc-heading' }, btn), body);
+}
+
+function notification(kind, title, text) {
+  return el('div', { class: 'notif' + (kind === 'error' ? ' error' : ''), role: kind === 'error' ? 'alert' : 'status' },
+    el('div', null, el('strong', null, title), el('p', null, text)));
+}
+
+const openMenus = new Set();
+const closeMenus = except => { for (const m of [...openMenus]) if (m !== except) m.close(); };
+document.addEventListener('click', () => closeMenus());
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeMenus(); });
+
+function menuButton(label, items) {
+  const btn = el('button', { class: 'btn secondary lg', type: 'button', 'aria-haspopup': 'menu', 'aria-expanded': 'false' },
+    icon('copy'), label, icon('caret'));
+  const list = el('ul', { class: 'menu', role: 'menu' });
+  list.hidden = true;
+  const api = {
+    open() { closeMenus(api); list.hidden = false; btn.setAttribute('aria-expanded', 'true'); openMenus.add(api); list.querySelector('button').focus(); },
+    close() { list.hidden = true; btn.setAttribute('aria-expanded', 'false'); openMenus.delete(api); },
+  };
+  for (const it of items) {
+    const b = el('button', { class: 'menu-item', role: 'menuitem', type: 'button' }, it.label);
+    b.addEventListener('click', () => { api.close(); btn.focus(); it.onClick(); });
+    list.append(el('li', { role: 'none' }, b));
+  }
+  list.addEventListener('keydown', e => {
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+    e.preventDefault();
+    const buttons = [...list.querySelectorAll('button')];
+    const i = buttons.indexOf(document.activeElement);
+    buttons[(i + (e.key === 'ArrowDown' ? 1 : -1) + buttons.length) % buttons.length].focus();
+  });
+  btn.addEventListener('click', e => { e.stopPropagation(); if (list.hidden) api.open(); else api.close(); });
+  list.addEventListener('click', e => e.stopPropagation());
+  return el('div', { class: 'menu-wrap' }, btn, list);
+}
+
+/** Parse timestamps such as 2025-07-09T05:05+0000 (no seconds, no colon in the offset) into epoch ms, or null. */
+function parseTimestamp(value) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?(?:\.\d+)?(Z|[+-]\d{2}:?\d{2})?$/.exec(String(value || '').trim());
+  if (!m) return null;
+  let ms = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +(m[6] || 0));
+  if (m[7] && m[7] !== 'Z') {
+    const sign = m[7][0] === '-' ? -1 : 1;
+    const digits = m[7].slice(1).replace(':', '');
+    ms -= sign * (+digits.slice(0, 2) * 60 + +digits.slice(2)) * 60000;
+  }
+  return ms;
+}
+
+/** Start of the given YYYY-MM-DD day in UTC (the timestamps in the tables are UTC), as epoch ms; null for an empty value. */
+function utcDayStart(value, plusDays = 0) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  return m ? Date.UTC(+m[1], +m[2] - 1, +m[3] + plusDays) : null;
+}
+
+/** Masked, read-only field with an eye button that reveals the value. The value is set as a property, never as markup. */
+function secretCell(value) {
+  if (!value) return el('td', null, el('span', { class: 'helper' }, '\u2013'));
+  const input = el('input', { type: 'password', readonly: true, autocomplete: 'off', spellcheck: 'false', 'aria-label': 'API key value' });
+  input.value = value;
+  // Monospace font: 1ch per character. IAM keys are 44 characters, so the field is always at least 44 + 5 characters
+  // wide (longer values get more), masked or revealed. The width never changes, so the whole key is visible on reveal.
+  input.style.width = Math.max(value.length, 44) + 5 + 'ch';
+  const btn = el('button', { class: 'icon-btn', type: 'button', 'aria-pressed': 'false', 'aria-label': 'Show API key', title: 'Show API key' }, icon('view'));
+  btn.addEventListener('click', () => {
+    const show = input.type === 'password';
+    input.type = show ? 'text' : 'password';
+    if (show) { input.focus(); input.select(); } // ready to copy with Ctrl+C
+    btn.setAttribute('aria-pressed', String(show));
+    const label = show ? 'Hide API key' : 'Show API key';
+    btn.setAttribute('aria-label', label);
+    btn.title = label;
+    btn.replaceChildren(icon(show ? 'viewOff' : 'view'));
+  });
+  return el('td', null, el('div', { class: 'secret-cell' }, input, btn));
+}
+
+function buildTable(section, rows) {
+  // A column flagged hideWithoutField is dropped when no row has that field (e.g. runs created before it was recorded);
+  // a secret column is dropped when no row has a value.
+  const cols = section.columns.filter(c =>
+    (!c.hideWithoutField || rows.some(r => r[c.hideWithoutField] !== undefined)) &&
+    (!c.secret || rows.some(r => r[c.key])));
+  const dataCols = cols.filter(c => !c.secret); // columns used for filtering and copying
+  const dateCol = cols.find(c => c.date);
+  const state = { q: '', key: null, dir: 1, from: null, until: null };
+
+  const search = el('input', { type: 'search', placeholder: 'Filter rows', 'aria-label': 'Filter ' + section.title });
+  const count = el('span', { class: 'dt-count', 'aria-live': 'polite' });
+  const tbody = el('tbody');
+  const sortBtns = new Map();
+
+  // Plain columns match anywhere; tag columns (Status) match from the start of a word,
+  // so "active" finds "Active" but not "Inactive".
+  const matches = (r, q) => {
+    const wordStart = new RegExp('(^|[^a-z0-9])' + q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    return dataCols.some(c => {
+      const text = cellText(r[c.key]).toLowerCase();
+      return c.tag ? wordStart.test(text) : text.includes(q);
+    });
+  };
+
+  const visibleRows = () => {
+    const q = state.q.trim().toLowerCase();
+    let out = q ? rows.filter(r => matches(r, q)) : rows.slice();
+    if (dateCol && (state.from != null || state.until != null)) {
+      out = out.filter(r => {
+        const t = parseTimestamp(r[dateCol.key]);
+        return t != null && (state.from == null || t >= state.from) && (state.until == null || t < state.until);
+      });
+    }
+    if (state.key) {
+      out.sort((a, b) => state.dir * cellText(a[state.key]).localeCompare(cellText(b[state.key]), undefined, { numeric: true }));
+    }
+    return out;
+  };
+
+  const paint = () => {
+    const vis = visibleRows();
+    tbody.replaceChildren();
+    if (!vis.length) {
+      tbody.append(el('tr', { class: 'empty-row' }, el('td', { colspan: String(cols.length) }, rows.length ? 'No rows match the filter.' : 'No rows in this file.')));
+    }
+    for (const r of vis) {
+      tbody.append(el('tr', null, cols.map(c => {
+        if (c.secret) return secretCell(r[c.key]);
+        const text = cellText(r[c.key]);
+        // Only plain https links become clickable; anything else is shown as text.
+        if (c.link && /^https:\/\/[^\s]+$/.test(text)) {
+          return el('td', { class: 'mono' }, el('a', { href: text, target: '_blank', rel: 'noopener noreferrer' }, text));
+        }
+        if (!c.tag) return el('td', { class: c.mono ? 'mono' : '' }, text);
+        const cls = c.tagClass ? c.tagClass(text) : text.startsWith('Active') ? 'green' : text.startsWith('Inactive') ? 'red' : '';
+        return el('td', null, el('span', { class: 'tag ' + cls }, text));
+      })));
+    }
+    count.textContent = vis.length === rows.length ? plural(rows.length, 'row') : `Showing ${vis.length} of ${rows.length}`;
+    for (const [key, th] of sortBtns) {
+      th.setAttribute('aria-sort', state.key === key ? (state.dir === 1 ? 'ascending' : 'descending') : 'none');
+    }
+  };
+
+  const headRow = el('tr');
+  for (const c of cols) {
+    if (c.secret) { headRow.append(el('th', { scope: 'col', class: 'th-static' }, c.label)); continue; }
+    const b = el('button', { class: 'th-btn', type: 'button', title: 'Sort by ' + c.label }, el('span', null, c.label), icon('arrowUp'));
+    const th = el('th', { scope: 'col', 'aria-sort': 'none' }, b);
+    b.addEventListener('click', () => {
+      if (state.key === c.key) state.dir = -state.dir; else { state.key = c.key; state.dir = 1; }
+      paint();
+    });
+    sortBtns.set(c.key, th);
+    headRow.append(th);
+  }
+
+  search.addEventListener('input', () => { state.q = search.value; paint(); });
+
+  let dateFilters = null;
+  if (dateCol) {
+    const from = el('input', { type: 'date', 'aria-label': `${dateCol.label} from` });
+    const until = el('input', { type: 'date', 'aria-label': `${dateCol.label} until` });
+    from.addEventListener('input', () => { state.from = utcDayStart(from.value); paint(); });
+    // "Until" is inclusive: keep every row before the start of the following day.
+    until.addEventListener('input', () => { state.until = utcDayStart(until.value, 1); paint(); });
+    dateFilters = el('div', { class: 'dt-dates' },
+      el('label', { class: 'dt-date' }, `${dateCol.label} from`, from),
+      el('label', { class: 'dt-date' }, 'until', until));
+  }
+
+  const copyFormat = async fmt => {
+    const vis = visibleRows();
+    if (!vis.length) { toast('Nothing to copy – the table has no rows.', 'error'); return; }
+    const { head, body } = matrix(dataCols, vis);
+    const ok = await copyPayload(fmt.build(head, body));
+    if (ok) toast(`Copied ${plural(vis.length, 'row')} as ${fmt.label}`);
+    else toast('Copy failed – your browser blocked clipboard access.', 'error');
+  };
+
+  const copyUnique = async () => {
+    const { values, duplicates } = uniqueValues(visibleRows(), section.unique.key);
+    if (!values.length) { toast('Nothing to copy – no values found.', 'error'); return; }
+    const ok = await copyPayload({ text: values.join('\n') });
+    if (ok) {
+      toast(`Copied ${plural(values.length, 'unique ' + section.unique.noun.replace(/s$/, ''))}` +
+            (duplicates ? ` (${plural(duplicates, 'duplicate')} removed)` : ''));
+    } else {
+      toast('Copy failed – your browser blocked clipboard access.', 'error');
+    }
+  };
+
+  const actions = el('div', { class: 'dt-actions' });
+  if (section.unique) {
+    const u = el('button', { class: 'btn primary lg', type: 'button' }, icon('copy'), 'Copy unique ' + section.unique.noun);
+    u.addEventListener('click', copyUnique);
+    actions.append(u);
+  }
+  actions.append(menuButton('Copy table as', FORMATS.map(f => ({ label: f.label, onClick: () => copyFormat(f) }))));
+
+  paint();
+  return el('div', { class: 'dt' },
+    el('div', { class: 'dt-toolbar' }, el('div', { class: 'dt-search' }, icon('search'), search), dateFilters, count, actions),
+    el('div', { class: 'table-wrap' }, el('table', null, el('thead', null, headRow), tbody)));
+}
+
+/* ───────────────────────── Loading + rendering ───────────────────────── */
+async function loadSection(run, section) {
+  const file = run.files.get(section.file);
+  if (!file) return { status: 'missing' };
+  try {
+    const parsed = JSON.parse(await file.text());
+    if (!Array.isArray(parsed)) return { status: 'error', message: `${section.file} does not contain a JSON array.` };
+    const rows = parsed.filter(r => r && typeof r === 'object');
+    return { status: 'ok', rows: section.prepare ? rows.map(section.prepare) : rows };
+  } catch (err) {
+    return { status: 'error', message: `${section.file} could not be parsed: ${err.message}` };
+  }
+}
+
+function buildSection(section, result) {
+  let content;
+  const tags = [];
+  if (result.status === 'ok') {
+    tags.push({ text: plural(result.rows.length, 'row'), cls: 'blue' });
+    if (section.unique) {
+      tags.push({ text: `${uniqueValues(result.rows, section.unique.key).values.length} unique`, cls: '' });
+    }
+    const inactive = result.rows.filter(r => String(r.status || '').startsWith('Inactive')).length;
+    if (inactive) tags.push({ text: `${inactive} inactive`, cls: 'red' });
+    const exposed = result.rows.filter(r => r.exposed === 'Yes').length;
+    if (exposed) tags.push({ text: `${exposed} exposed`, cls: 'red' });
+    content = buildTable(section, result.rows);
+  } else if (result.status === 'missing') {
+    tags.push({ text: 'No file', cls: '' });
+    content = notification('info', 'No data for this run', section.missing);
+  } else {
+    tags.push({ text: 'Error', cls: 'red' });
+    content = notification('error', 'Unable to read ' + section.file, result.message);
+  }
+  return collapsible({ level: 2, title: section.title, tags, note: section.note, open: true, content });
+}
+
+const modulesEl = document.getElementById('modules');
+let renderToken = 0;
+
+async function renderRun(run) {
+  const token = ++renderToken;
+  const built = [];
+  for (const mod of MODULES) {
+    const results = await Promise.all(mod.sections.map(s => loadSection(run, s)));
+    built.push({ mod, sections: mod.sections.map((s, i) => buildSection(s, results[i])) });
+  }
+  if (token !== renderToken) return; // a newer run was selected meanwhile
+  modulesEl.replaceChildren(...built.map(({ mod, sections }) =>
+    el('div', { class: 'module' },
+      collapsible({ level: 1, title: mod.title, script: mod.script, open: true, content: sections }))));
+}
+
+const runSelect = document.getElementById('runSelect');
+const runMeta = document.getElementById('runMeta');
+let currentRuns = [];
+
+function showEmptyState() {
+  modulesEl.replaceChildren(el('div', { class: 'tile empty-state' },
+    el('h2', null, 'No data loaded'),
+    el('p', null, 'Select the output folder of an enumeration run (or the folder containing your output_* directories) to see the results here.')));
+}
+
+function loadEntries(entries) {
+  currentRuns = buildRuns(entries);
+  if (!currentRuns.length) {
+    runSelect.replaceChildren(el('option', null, 'No folder loaded'));
+    runSelect.disabled = true;
+    runMeta.textContent = '';
+    showEmptyState();
+    toast('No result files found in the selected folder.', 'error');
+    return;
+  }
+  runSelect.replaceChildren(...currentRuns.map((r, i) => {
+    const when = r.ts ? ` – ${formatRunDate(r.ts)}` : ' – no timestamp';
+    return el('option', { value: String(i) }, r.name + when + (i === 0 ? ' (latest)' : ''));
+  }));
+  runSelect.disabled = false;
+  runSelect.selectedIndex = 0;
+  runMeta.textContent = `${plural(entries.length, 'file')} scanned · ${plural(currentRuns.length, 'run')} found`;
+  renderRun(currentRuns[0]);
+}
+
+/* ───────────────────────── Wiring ───────────────────────── */
+const picker = document.getElementById('picker');
+document.getElementById('pick').addEventListener('click', () => picker.click());
+picker.addEventListener('change', () => {
+  const entries = [...picker.files].map(f => ({ path: f.webkitRelativePath || f.name, file: f }));
+  picker.value = ''; // allow re-selecting the same folder after it changed on disk
+  if (entries.length) loadEntries(entries);
+});
+runSelect.addEventListener('change', () => renderRun(currentRuns[runSelect.selectedIndex]));
+
+window.addEventListener('dragover', e => { e.preventDefault(); document.body.classList.add('dragging'); });
+window.addEventListener('dragleave', e => { if (!e.relatedTarget) document.body.classList.remove('dragging'); });
+window.addEventListener('drop', async e => {
+  e.preventDefault();
+  document.body.classList.remove('dragging');
+  try {
+    const entries = await entriesFromDrop(e.dataTransfer);
+    if (entries.length) loadEntries(entries);
+    else toast('No files found in the dropped item.', 'error');
+  } catch (err) {
+    toast('Could not read the dropped folder: ' + err.message, 'error');
+  }
+});
+
+
+/* ───────────────────────── Theme switch ───────────────────────── */
+const themeSwitch = document.getElementById('themeSwitch');
+function applyTheme(theme, persist) {
+  document.documentElement.setAttribute('data-theme', theme);
+  themeSwitch.setAttribute('aria-checked', String(theme === 'dark'));
+  if (persist) { try { localStorage.setItem('ibm-toolkit-report-theme', theme); } catch (_) { /* storage unavailable (e.g. private mode) */ } }
+}
+applyTheme(document.documentElement.getAttribute('data-theme') || 'light', false);
+themeSwitch.addEventListener('click', () => {
+  applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark', true);
+});
+
+showEmptyState();
+</script>
+</body>
+</html>
