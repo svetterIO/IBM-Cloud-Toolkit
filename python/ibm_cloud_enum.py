@@ -131,6 +131,7 @@ def parse_args(argv=None):
         args.q = 10
         args.m = None
         args.f = False
+        args.s = False
         args._extras = extras
         return args
 
@@ -160,6 +161,8 @@ def parse_args(argv=None):
                    help="Maximum files to download per bucket (required to enable downloading)")
     p.add_argument("-f", action="store_true",
                    help="Flatten downloaded files (keep only filename); only used with -m")
+    p.add_argument("-s", action="store_true",
+                   help="Search bucket file names for sensitive patterns (opt-in; can be noisy)")
     args = p.parse_args(argv)
     args._extras = []
     return args
@@ -226,6 +229,7 @@ def _import_all() -> dict:
     import download_buckets_files
     import get_security_groups
     import get_code_engine
+    import search_buckets_file_names
     return {
         "get_api_keys": get_api_keys,
         "get_service_api_keys": get_service_api_keys,
@@ -244,6 +248,7 @@ def _import_all() -> dict:
         "download_buckets_files": download_buckets_files,
         "get_security_groups": get_security_groups,
         "get_code_engine": get_code_engine,
+        "search_buckets_file_names": search_buckets_file_names,
     }
 
 
@@ -376,11 +381,20 @@ def main(argv=None):
         "get_security_groups",
         "get_code_engine",
         "get_buckets_files",             # lists keys per bucket (default: -n 100 keys per bucket)
-        "search_buckets_file_names",     # scans keys for sensitive-looking names
     ]
 
     for action in FULL_RUN_ORDER:
         _run_action(action, args, modules)
+
+    # search_buckets_file_names runs only when -s is explicitly provided (opt-in, can be noisy)
+    if args.s:
+        _run_action("search_buckets_file_names", args, modules)
+    else:
+        print()
+        print(SEPARATOR)
+        print(f"{CYAN}Skipping bucket file name search.{RESET}")
+        print(f"To search bucket file names for sensitive patterns, re-run with {BOLD}-s{RESET}:")
+        print(f"  {BOLD}python python/ibm_cloud_enum.py -s{RESET}")
 
     # download_buckets_files runs last, only when -m is explicitly provided
     if args.m is not None:

@@ -4,7 +4,7 @@
 # Main enumeration script for IBM Cloud. Runs all resource enumeration scripts in sequence,
 # or a single named action.
 #
-# Usage: ./ibm_cloud_enum.sh [ACTION] [-h] [-o OUTPUT_DIR] [-v] [-d] [-p PARALLEL] [-m MAX_ITEMS] [-f]
+# Usage: ./ibm_cloud_enum.sh [ACTION] [-h] [-o OUTPUT_DIR] [-v] [-d] [-p PARALLEL] [-m MAX_ITEMS] [-f] [-s]
 # ACTION (optional): run only one module, e.g. get_api_keys  (omit to run all)
 # -h: Show help
 # -o OUTPUT_DIR: Specify output directory for all scripts (default: each script uses its own default)
@@ -13,6 +13,7 @@
 # -p PARALLEL: Number of parallel workers for get_users.sh and get_service_api_keys.sh (default: 10)
 # -m MAX_ITEMS: Maximum number of files to download per bucket (required to enable downloading)
 # -f: Flatten downloaded files (strip path, keep only filename)
+# -s: Search bucket file names for sensitive patterns (opt-in; can be noisy)
 # Requires IBM Cloud CLI, jq for JSON parsing, curl for REST API requests,
 # and the following plugins of IBM Cloud CLI: databases ("cdb"), vpc-infrastructure ("is")
 srcdir="$(dirname "${BASH_SOURCE[0]}")"
@@ -33,6 +34,7 @@ MAX_LIST_ITEMS=100
 LIST_PARALLEL=10
 MAX_DOWNLOAD_ITEMS=""
 FLATTEN_DOWNLOADS=false
+SEARCH_FILE_NAMES=false
 ACTION=""
 
 # All available actions (same names as the underlying scripts, without .sh)
@@ -43,7 +45,7 @@ search_buckets_file_names"
 
 usage() {
     scriptname=$(basename "$0")
-    echo "Usage: ./$scriptname [ACTION] [-h] [-o OUTPUT_DIR] [-v] [-d] [-p PARALLEL] [-n LIST_ITEMS] [-m MAX_ITEMS] [-f]"
+    echo "Usage: ./$scriptname [ACTION] [-h] [-o OUTPUT_DIR] [-v] [-d] [-p PARALLEL] [-n LIST_ITEMS] [-m MAX_ITEMS] [-f] [-s]"
     echo
     echo "Arguments:"
     echo "  ACTION          (optional) Run only one module instead of all, e.g.:"
@@ -63,6 +65,7 @@ usage() {
     echo "  -q LIST_PARALLEL  Parallel workers for get_buckets_files listing (default: 10)"
     echo "  -m MAX_ITEMS    Maximum number of files to download per bucket (required to enable downloading)"
     echo "  -f              Flatten downloaded files (strip directory path, keep only filename)"
+    echo "  -s              Search bucket file names for sensitive patterns (opt-in; can be noisy)"
     echo
     echo "This script runs all IBM Cloud enumeration scripts."
     echo
@@ -72,6 +75,7 @@ usage() {
     echo "Scripts with parallel support (-p): get_users, get_service_api_keys"
     echo "Listing options (-n, -q): get_buckets_files"
     echo "Download options (-m, -f): download_buckets_files"
+    echo "Search options (-s): search_buckets_file_names"
 }
 
 # If first argument looks like an action name (no leading -), capture it
@@ -80,7 +84,7 @@ if [[ $# -gt 0 && "$1" != -* ]]; then
     shift
 fi
 
-while getopts ":ho:p:n:q:m:vdf" opt; do
+while getopts ":ho:p:n:q:m:vdfs" opt; do
     case $opt in
         h)
             usage
@@ -110,6 +114,9 @@ while getopts ":ho:p:n:q:m:vdf" opt; do
             ;;
         f)
             FLATTEN_DOWNLOADS=true
+            ;;
+        s)
+            SEARCH_FILE_NAMES=true
             ;;
         \?)
             echo "Invalid option: -$OPTARG" >&2
@@ -253,8 +260,17 @@ run_script "$srcdir/get_security_groups.sh" $COMMON_FLAGS
 run_script "$srcdir/get_code_engine.sh" $FULL_DEBUG_FLAGS
 # get_buckets_files.sh: list file keys per bucket (default: -n 100 keys, -q 10 workers)
 run_script "$srcdir/get_buckets_files.sh" $COMMON_FLAGS -m $MAX_LIST_ITEMS -p $LIST_PARALLEL
-# search_buckets_file_names.sh: scan keys for sensitive-looking names
-run_script "$srcdir/search_buckets_file_names.sh" $COMMON_FLAGS
+# search_buckets_file_names.sh: opt-in only (-s flag), can be noisy
+if [ "$SEARCH_FILE_NAMES" = true ]; then
+    run_script "$srcdir/search_buckets_file_names.sh" $COMMON_FLAGS
+else
+    echo " "
+    echo "${SEPARATOR}"
+    echo -e "${CYAN}Skipping bucket file name search.${RESET}"
+    scriptname=$(basename "$0")
+    echo -e "To search bucket file names for sensitive patterns, re-run with ${BOLD}-s${RESET}:"
+    echo -e "  ${BOLD}./$scriptname -s${RESET}"
+fi
 # download_buckets_files.sh: runs last, only when -m is explicitly provided
 if [[ -n "$MAX_DOWNLOAD_ITEMS" ]]; then
     DOWNLOAD_FLAGS="$COMMON_FLAGS -m $MAX_DOWNLOAD_ITEMS"
@@ -298,6 +314,9 @@ if [ "$DEBUG" = true ]; then
         echo -e "  Parallel workers: ${BOLD}$PARALLEL_WORKERS${RESET}"
     fi
     echo -e "  Bucket file listing: ${BOLD}${MAX_LIST_ITEMS}${RESET} keys per bucket, ${BOLD}${LIST_PARALLEL}${RESET} parallel worker(s)"
+    if [ "$SEARCH_FILE_NAMES" = true ]; then
+        echo -e "  Bucket file name search: ${BOLD}enabled${RESET}"
+    fi
     if [[ -n "$MAX_DOWNLOAD_ITEMS" ]]; then
         echo -e "  Max download items per bucket: ${BOLD}$MAX_DOWNLOAD_ITEMS${RESET}"
     fi
