@@ -62,6 +62,7 @@ ACTIONS: dict[str, tuple[str, str, str]] = {
     "get_buckets":           ("get_buckets",            "get_buckets.py",           "common"),
     "get_buckets_files":     ("get_buckets_files",      "get_buckets_files.py",     "buckets_files"),
     "get_security_groups":        ("get_security_groups",       "get_security_groups.py",        "common"),
+    "get_load_balancers":         ("get_load_balancers",        "get_load_balancers.py",         "common"),
     "get_code_engine":            ("get_code_engine",           "get_code_engine.py",            "full_debug"),
     "download_buckets_files":     ("download_buckets_files",    "download_buckets_files.py",     "download"),
     "search_buckets_file_names":  ("search_buckets_file_names", "search_buckets_file_names.py",  "common"),
@@ -228,6 +229,7 @@ def _import_all() -> dict:
     import get_buckets_files
     import download_buckets_files
     import get_security_groups
+    import get_load_balancers
     import get_code_engine
     import search_buckets_file_names
     return {
@@ -247,6 +249,7 @@ def _import_all() -> dict:
         "get_buckets_files": get_buckets_files,
         "download_buckets_files": download_buckets_files,
         "get_security_groups": get_security_groups,
+        "get_load_balancers": get_load_balancers,
         "get_code_engine": get_code_engine,
         "search_buckets_file_names": search_buckets_file_names,
     }
@@ -379,6 +382,7 @@ def main(argv=None):
         "get_databases",
         "get_buckets",
         "get_security_groups",
+        "get_load_balancers",
         "get_code_engine",
         "get_buckets_files",             # lists keys per bucket (default: -n 100 keys per bucket)
     ]
