@@ -286,6 +286,12 @@ Heber Blain Gonçalves
 - [linkedin.com/hebergoncalves/](https://linkedin.com/in/hebergoncalves/)
 - [github.com/manotux](https://github.com/manotux)
 
+## Co-Author (v2.0 Python implementation)
+Sebastian Vetter
+
+- [linkedin.com/in/svetterio](https://www.linkedin.com/in/svetterio)
+- [github.com/svetterIO](https://github.com/svetterIO)
+
 ## License
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 

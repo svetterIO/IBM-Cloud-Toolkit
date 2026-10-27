@@ -40,6 +40,7 @@ BANNER = f"""
 {BLUE}{BOLD}=============================================={RESET}
 IBM Cloud enumeration tool
 github.com/manotux/IBM-Cloud-Toolkit
+v2.0 by manotux & svetterIO
 {BLUE}{BOLD}=============================================={RESET}
 """
 

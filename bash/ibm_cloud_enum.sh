@@ -24,6 +24,7 @@ ${ORANGE}${BOLD}          IBM Cloud ToolKit ${VERSION} ${RESET}
 ${BLUE}${BOLD}==============================================${RESET}
 IBM Cloud enumeration tool
 github.com/manotux/IBM-Cloud-Toolkit
+v2.0 by manotux & svetterIO
 ${BLUE}${BOLD}==============================================${RESET}\n"
 OUTPUT_DIR=""
 OUTPUT_DIR_SET=false
