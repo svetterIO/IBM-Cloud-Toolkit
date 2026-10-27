@@ -32,6 +32,7 @@ def parse_args(argv=None):
     )
     p.add_argument("-o", metavar="OUTPUT_DIR", default="output")
     p.add_argument("-f", metavar="OUTPUT_FILE", default="user_policies.txt")
+    p.add_argument("-v", action="store_true", help="Enable debug output")
     return p.parse_args(argv)
 
 
@@ -47,8 +48,14 @@ def main(argv=None):
     print(f"Enumerating Users with {ORANGE}{BOLD}direct access policies{RESET} in IAM...")
     print(" ")
 
+    if args.v:
+        print(f"{BOLD}[DEBUG]{RESET} Retrieving access token and account ID")
+
     token = ibmcloud_access_token()
     account_id = ibmcloud_account_id()
+
+    if args.v:
+        print(f"{BOLD}[DEBUG]{RESET} GET https://iam.cloud.ibm.com/v2/accounts/<id>/users")
 
     users_data = ibmcloud_get(
         f"https://iam.cloud.ibm.com/v2/accounts/{account_id}/users", token
@@ -60,12 +67,17 @@ def main(argv=None):
     if not users:
         failure(f"Failed to retrieve users for account {account_id}.")
 
+    if args.v:
+        print(f"{BOLD}[DEBUG]{RESET} Found {len(users)} user(s), checking policies...")
+
     found = False
     lines: list[str] = []
 
     for user in users:
         iam_id = user.get("iam_id", "")
         user_id = user.get("user_id", "")
+        if args.v:
+            print(f"{BOLD}[DEBUG]{RESET} GET policies for {user_id}")
         policies_data = ibmcloud_get(
             f"https://iam.cloud.ibm.com/v1/policies?account_id={account_id}&iam_id={iam_id}",
             token,
