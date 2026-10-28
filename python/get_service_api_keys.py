@@ -49,11 +49,6 @@ def parse_args(argv=None):
 def fetch_keys_for_service(
     service_id: str, service_name: str, verbose: bool, full_debug: bool
 ) -> list[dict]:
-    if verbose:
-        msg = f"  {BOLD}[DEBUG]{RESET} Fetching keys for Service ID: {service_name} ({service_id})"
-        if full_debug:
-            msg += f"\n         ibmcloud iam service-api-keys {service_id} -o JSON"
-        print(msg, flush=True)
     result = _ibmcloud("iam", "service-api-keys", service_id, "-o", "JSON")
     if result.returncode != 0 or not result.stdout.strip():
         return []
@@ -61,6 +56,7 @@ def fetch_keys_for_service(
         keys = json.loads(result.stdout)
         if not isinstance(keys, list):
             return []
+        lines: list[str] = []
         for k in keys:
             k["service_id"] = service_id
             k["service_name"] = service_name
@@ -68,15 +64,21 @@ def fetch_keys_for_service(
             k["browser_url"] = f"https://cloud.ibm.com/iam/serviceids/{service_id}?tab=apikeys"
             # A key is active unless it was disabled or its expiration date has passed
             k["active"] = not k.get("disabled") and not iso_is_past(k.get("expires_at") or "")
-            if verbose and k.get("apikey"):
+            if verbose:
                 key_name = k.get("name", "")
-                leak_msg = (f"  {BOLD}[DEBUG]{RESET} Fetching keys for Service ID: "
-                            f"{service_name} ({service_id}): "
-                            f"{BRIGHT_RED}{BOLD}Leaking API key found{RESET}")
-                if full_debug:
-                    leak_msg += (f"\n         ibmcloud iam service-api-keys {service_id}"
-                                 f" -n {key_name} -o JSON")
-                print(leak_msg)
+                is_leak = bool(k.get("apikey"))
+                leak_suffix = (f": {BRIGHT_RED}{BOLD}Leaking API key found{RESET}"
+                               if is_leak else "")
+                cmd = (f' [ibmcloud iam service-api-keys {service_id} -n "{key_name}" -o JSON]'
+                       if full_debug else "")
+                lines.append(
+                    f"  {BOLD}[DEBUG]{RESET} Fetching keys for Service ID: "
+                    f'"{key_name}" ({service_id}){leak_suffix}{cmd}'
+                )
+        if lines:
+            # Print all lines for this service ID as one atomic write to avoid
+            # interleaving with output from other parallel workers.
+            print("\n".join(lines), flush=True)
         return keys
     except json.JSONDecodeError:
         return []
