@@ -114,7 +114,10 @@ def parse_args(argv=None):
     )
 
     if action is not None:
-        # Single-action mode: only consume -o and -v; leave everything else.
+        # Single-action mode: consume -o, -v, and -d (full-debug toggle); leave
+        # everything else as pass-through extras for the module itself.
+        # -d is claimed here so it is never forwarded raw to modules that define
+        # -d differently (e.g. ROTATION_DAYS in get_service_api_keys/get_api_keys).
         p = argparse.ArgumentParser(
             prog="ibm_cloud_enum.py",
             description=desc_base,
@@ -125,10 +128,11 @@ def parse_args(argv=None):
         p.add_argument("-o", metavar="OUTPUT_DIR", default="",
                        help="Report folder (default: time-bound 'reports/report_YYYYMMDD_HHMMSS')")
         p.add_argument("-v", action="store_true",
-                       help="Enable debug mode")
+                       help="Enable verbose/debug mode")
+        p.add_argument("-d", action="store_true",
+                       help="Full debug mode (unredacted tokens); requires -v")
         args, extras = p.parse_known_args(argv)
         # Synthesise missing full-run attributes so the rest of main() still works
-        args.d = False
         args.p = 10
         args.n = 100
         args.q = 10
@@ -326,16 +330,11 @@ def main(argv=None):
             from utils import ensure_output_dir
             ensure_output_dir(args.o)
 
-        # Build the flag list: runner-level flags that apply (-o, -v) + any
-        # extra flags the user typed after ACTION (passed straight through).
-        passthrough: list[str] = []
-        if args.o:
-            passthrough += ["-o", args.o]
-        if args.v:
-            passthrough.append("-v")
-        passthrough += args._extras   # e.g. ["-p", "20", "-m", "50"]
-
-        _, script_file, _ = ACTIONS[args.action]
+        # Build the flag list using the same _build_flags logic as full-run mode,
+        # so runner flags (-o, -v, -d) are only forwarded where the module accepts
+        # them. Then append any remaining extras the user typed after ACTION.
+        _, script_file, flag_set = ACTIONS[args.action]
+        passthrough = _build_flags(args, flag_set) + args._extras
         modules = _import_all()
         mod = modules[ACTIONS[args.action][0]]
         _run_module(mod.main, script_file, passthrough)
