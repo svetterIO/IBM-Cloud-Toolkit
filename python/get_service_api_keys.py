@@ -68,9 +68,12 @@ def fetch_keys_for_service(
             # A key is active unless it was disabled or its expiration date has passed
             k["active"] = not k.get("disabled") and not iso_is_past(k.get("expires_at") or "")
             if verbose and k.get("apikey"):
-                print(f"  {BOLD}[DEBUG]{RESET} Fetching keys for Service ID: "
-                      f"{service_name} ({service_id}): "
-                      f"{BRIGHT_RED}{BOLD}Leaking API key found{RESET}")
+                leak_msg = (f"  {BOLD}[DEBUG]{RESET} Fetching keys for Service ID: "
+                            f"{service_name} ({service_id}): "
+                            f"{BRIGHT_RED}{BOLD}Leaking API key found{RESET}")
+                if full_debug:
+                    leak_msg += f"\n         ibmcloud iam service-api-keys {service_id} -o JSON"
+                print(leak_msg)
         return keys
     except json.JSONDecodeError:
         return []
