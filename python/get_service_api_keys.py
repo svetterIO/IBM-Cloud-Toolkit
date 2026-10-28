@@ -69,7 +69,7 @@ def fetch_keys_for_service(
                 is_leak = bool(k.get("apikey"))
                 leak_suffix = (f": {BRIGHT_RED}{BOLD}Leaking API key found{RESET}"
                                if is_leak else "")
-                cmd = (f' [ibmcloud iam service-api-keys {service_id} -n "{key_name}" -o JSON]'
+                cmd = (f' -> ibmcloud iam service-api-keys {service_id} -n "{key_name}" -o JSON'
                        if full_debug else "")
                 lines.append(
                     f"  {BOLD}[DEBUG]{RESET} Fetching keys for Service ID: "
