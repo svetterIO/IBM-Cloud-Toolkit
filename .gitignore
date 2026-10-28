@@ -1,5 +1,7 @@
 output/
 output_*/
+reports/*
+!reports/index.html
 
 # Python - virtual environments
 venv/
