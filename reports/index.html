@@ -281,7 +281,7 @@ tbody tr:hover td { background: var(--layer-hover); }
 .empty-state h2 { margin: 0 0 8px; font-size: 20px; line-height: 28px; font-weight: 400; }
 .empty-state p { margin: 0 auto; max-width: 560px; color: var(--text-2); }
 body.dragging::after {
-  content: "Drop the output folder to load it"; position: fixed; inset: 0; z-index: 60; display: grid; place-items: center;
+  content: "Drop the reports folder to load it"; position: fixed; inset: 0; z-index: 60; display: grid; place-items: center;
   background: rgba(15, 98, 254, .12); border: 2px dashed var(--primary); color: var(--drag-text); font-size: 20px; pointer-events: none;
 }
 @media (max-width: 672px) {
@@ -311,15 +311,15 @@ body.dragging::after {
       <button class="btn primary lg" id="pick" type="button">Select folder</button>
       <input type="file" id="picker" webkitdirectory multiple hidden>
       <label class="field">
-        <span class="label">Output directory</span>
+        <span class="label">Report directory</span>
         <select id="runSelect" disabled><option>No folder loaded</option></select>
       </label>
       <span class="helper" id="runMeta"></span>
     </div>
     <p class="helper source-help">
-      Select the folder that holds your <code>output_YYYYMMDD_HHMMSS</code> directories (for example the repository root),
-      or a single output folder directly. You can also drag and drop it onto this page. The latest run is selected
-      automatically; the legacy <code>output</code> folder is used when no time-bound run exists.
+      Select the <code>reports/</code> folder (or drag and drop it onto this page) to load all enumeration runs at once.
+      The latest run is selected automatically. Individual <code>report_YYYYMMDD_HHMMSS</code> folders can be selected directly too.
+      Legacy <code>output_YYYYMMDD_HHMMSS</code> and <code>output</code> folders are also recognised.
     </p>
   </section>
 
@@ -448,7 +448,7 @@ const MODULES = [
 ];
 
 /* ───────────────────────── Helpers ───────────────────────── */
-const RUN_RE = /^output(?:_(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2}))?$/;
+const RUN_RE = /^(?:report|output)(?:_(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2}))?$/;
 const SKIP_DIRS = new Set(['.git', 'venv', '.venv', 'node_modules', '__pycache__']);
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -505,7 +505,7 @@ function toast(message, kind) {
 }
 
 /* ───────────────────────── Run discovery ───────────────────────── */
-/** Group picked files into runs (output_YYYYMMDD_HHMMSS or legacy "output"), newest first. */
+/** Group picked files into runs (report_YYYYMMDD_HHMMSS, legacy output_YYYYMMDD_HHMMSS, or bare "report"/"output"), newest first. */
 function buildRuns(entries) {
   const runs = new Map();
   const newRun = name => {
@@ -948,7 +948,7 @@ let currentRuns = [];
 function showEmptyState() {
   modulesEl.replaceChildren(el('div', { class: 'tile empty-state' },
     el('h2', null, 'No data loaded'),
-    el('p', null, 'Select the output folder of an enumeration run (or the folder containing your output_* directories) to see the results here.')));
+    el('p', null, 'Select the reports/ folder (or a single report_YYYYMMDD_HHMMSS folder) to see the results here.')));
 }
 
 function loadEntries(entries) {
