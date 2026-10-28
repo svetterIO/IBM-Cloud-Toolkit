@@ -37,10 +37,11 @@ def parse_args(argv=None):
     )
     p.add_argument("-o", metavar="OUTPUT_DIR", default="reports")
     p.add_argument("-f", metavar="OUTPUT_FILE", default="service_api_keys.json")
-    p.add_argument("-d", metavar="ROTATION_DAYS", type=int, default=90)
+    p.add_argument("-r", metavar="ROTATION_DAYS", type=int, default=90,
+                   help="Rotation threshold in days (default: 90)")
     p.add_argument("-p", metavar="MAX_PARALLEL", type=int, default=10)
     p.add_argument("-v", action="store_true", help="Verbose: show commands and per-service-ID progress")
-    p.add_argument("--full-debug", action="store_true",
+    p.add_argument("-d", action="store_true",
                    help="Full debug: also print each individual ibmcloud service-api-keys command")
     return p.parse_args(argv)
 
@@ -115,7 +116,7 @@ def main(argv=None):
     if args.v:
         print(f"{BOLD}[DEBUG]{RESET} To retrieve API keys for a single Service ID:")
         print(f"         ibmcloud iam service-api-keys <SERVICE_ID> -o JSON")
-        print(f"         ibmcloud iam service-api-keys <SERVICE_ID>/<KEY_NAME> -o JSON")
+        print(f"         ibmcloud iam service-api-keys <SERVICE_ID> -n <KEY_NAME> -o JSON")
         print()
 
     print(f"Fetching API keys for each Service ID (using {args.p} parallel workers)...")
@@ -126,7 +127,7 @@ def main(argv=None):
     all_keys: list[dict] = []
     with ThreadPoolExecutor(max_workers=args.p) as executor:
         futures = {
-            executor.submit(fetch_keys_for_service, sid, sname, args.v, args.full_debug): sid
+            executor.submit(fetch_keys_for_service, sid, sname, args.v, args.d): sid
             for sid, sname in id_name_map.items()
         }
         for future in as_completed(futures):
@@ -162,18 +163,18 @@ def main(argv=None):
         if not created_at:
             continue
         age = days_since_iso(created_at)
-        if age is not None and age > args.d:
+        if age is not None and age > args.r:
             non_rotated.append(k)
 
     if non_rotated:
-        print(f"{YELLOW}{BOLD}Service API keys not rotated in {args.d} days: {len(non_rotated)}{RESET}")
+        print(f"{YELLOW}{BOLD}Service API keys not rotated in {args.r} days: {len(non_rotated)}{RESET}")
         non_rotated_path.write_text(json.dumps(non_rotated, indent=2), encoding="utf-8")
         print(f"Non-rotated keys saved to: {BOLD}{non_rotated_path}{RESET}")
         for k in non_rotated:
             print(f"  - {k.get('name')} (Service: {k.get('service_name')}, Created: {k.get('created_at')})")
     else:
-        print(f"{BOLD}Service API keys not rotated in {args.d} days: 0{RESET}")
-        print(f"{BOLD}Good:{RESET} All Service API keys have been rotated within the last {args.d} days.")
+        print(f"{BOLD}Service API keys not rotated in {args.r} days: 0{RESET}")
+        print(f"{BOLD}Good:{RESET} All Service API keys have been rotated within the last {args.r} days.")
 
     print("\nCompleted Service API key extraction.")
     print()
