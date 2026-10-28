@@ -24,7 +24,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from utils import (
-    BOLD, ORANGE, RESET, SEPARATOR, YELLOW,
+    BOLD, BRIGHT_RED, ORANGE, RESET, SEPARATOR, YELLOW,
     _ibmcloud, days_since_iso, ensure_output_dir, failure,
     iso_is_past, print_console_link, require_ibmcloud_login,
 )
@@ -39,13 +39,20 @@ def parse_args(argv=None):
     p.add_argument("-f", metavar="OUTPUT_FILE", default="service_api_keys.json")
     p.add_argument("-d", metavar="ROTATION_DAYS", type=int, default=90)
     p.add_argument("-p", metavar="MAX_PARALLEL", type=int, default=10)
-    p.add_argument("-v", action="store_true")
+    p.add_argument("-v", action="store_true", help="Verbose: show commands and per-service-ID progress")
+    p.add_argument("--full-debug", action="store_true",
+                   help="Full debug: also print each individual ibmcloud service-api-keys command")
     return p.parse_args(argv)
 
 
-def fetch_keys_for_service(service_id: str, service_name: str, debug: bool) -> list[dict]:
-    if debug:
-        print(f"  {BOLD}[DEBUG]{RESET} Fetching keys for Service ID: {service_name} ({service_id})")
+def fetch_keys_for_service(
+    service_id: str, service_name: str, verbose: bool, full_debug: bool
+) -> list[dict]:
+    if verbose:
+        msg = f"  {BOLD}[DEBUG]{RESET} Fetching keys for Service ID: {service_name} ({service_id})"
+        if full_debug:
+            msg += f"\n         ibmcloud iam service-api-keys {service_id} -o JSON"
+        print(msg)
     result = _ibmcloud("iam", "service-api-keys", service_id, "-o", "JSON")
     if result.returncode != 0 or not result.stdout.strip():
         return []
@@ -60,6 +67,10 @@ def fetch_keys_for_service(service_id: str, service_name: str, debug: bool) -> l
             k["browser_url"] = f"https://cloud.ibm.com/iam/serviceids/{service_id}?tab=apikeys"
             # A key is active unless it was disabled or its expiration date has passed
             k["active"] = not k.get("disabled") and not iso_is_past(k.get("expires_at") or "")
+            if verbose and k.get("apikey"):
+                print(f"  {BOLD}[DEBUG]{RESET} Fetching keys for Service ID: "
+                      f"{service_name} ({service_id}): "
+                      f"{BRIGHT_RED}{BOLD}Leaking API key found{RESET}")
         return keys
     except json.JSONDecodeError:
         return []
@@ -97,6 +108,13 @@ def main(argv=None):
 
     total_svc = len(service_ids_raw)
     print(f"{BOLD}Total Service IDs: {total_svc}{RESET}")
+
+    if args.v:
+        print(f"{BOLD}[DEBUG]{RESET} To retrieve API keys for a single Service ID:")
+        print(f"         ibmcloud iam service-api-keys <SERVICE_ID> -o JSON")
+        print(f"         ibmcloud iam service-api-keys <SERVICE_ID>/<KEY_NAME> -o JSON")
+        print()
+
     print(f"Fetching API keys for each Service ID (using {args.p} parallel workers)...")
     print(" ")
 
@@ -105,7 +123,7 @@ def main(argv=None):
     all_keys: list[dict] = []
     with ThreadPoolExecutor(max_workers=args.p) as executor:
         futures = {
-            executor.submit(fetch_keys_for_service, sid, sname, args.v): sid
+            executor.submit(fetch_keys_for_service, sid, sname, args.v, args.full_debug): sid
             for sid, sname in id_name_map.items()
         }
         for future in as_completed(futures):

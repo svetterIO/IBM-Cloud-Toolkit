@@ -274,7 +274,10 @@ def _build_flags(args, flag_set: str) -> list[str]:
     if flag_set == "full_debug":
         return common + (["-d"] if args.d else [])
     if flag_set == "service_api":
-        return common + ["-p", str(args.p)]
+        flags = common + ["-p", str(args.p)]
+        if args.d:
+            flags.append("--full-debug")
+        return flags
     if flag_set == "users":
         return common + (["-d"] if args.d else []) + ["-p", str(args.p)]
     if flag_set == "buckets_files":
