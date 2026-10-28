@@ -268,6 +268,33 @@ tbody tr:hover td { background: var(--layer-hover); }
 }
 .menu-item:hover { background: var(--pop-hover); }
 
+/* Copy-table panel (column picker + format buttons) */
+.copy-panel {
+  position: absolute; right: 0; top: 100%; z-index: 30; width: 320px;
+  background: var(--pop); box-shadow: 0 2px 6px rgba(0,0,0,.3);
+}
+.copy-panel-cols { padding: 8px 0 4px; border-bottom: 1px solid rgba(255,255,255,.12); }
+.copy-panel-label {
+  display: block; padding: 0 16px 6px; color: rgba(255,255,255,.55); font-size: 11px;
+  letter-spacing: .32px; text-transform: uppercase;
+}
+.copy-col-item {
+  display: flex; align-items: center; gap: 10px; width: 100%; height: 32px; padding: 0 16px;
+  border: 0; background: none; color: #fff; text-align: left; font: inherit;
+  font-size: 13px; letter-spacing: .16px; cursor: pointer;
+}
+.copy-col-item:hover { background: var(--pop-hover); }
+.copy-col-item:focus-visible { box-shadow: inset 0 0 0 2px var(--focus); outline: none; }
+.copy-col-item input[type="checkbox"] { flex: none; accent-color: #78a9ff; width: 14px; height: 14px; pointer-events: none; }
+.copy-panel-formats { padding: 4px 0; }
+.copy-fmt-btn {
+  display: block; width: 100%; height: 40px; padding: 0 16px; border: 0; background: none; color: #fff;
+  text-align: left; font: inherit; letter-spacing: .16px; cursor: pointer;
+}
+.copy-fmt-btn:hover:not(:disabled) { background: var(--pop-hover); }
+.copy-fmt-btn:focus-visible { box-shadow: inset 0 0 0 2px var(--focus); outline: none; }
+.copy-fmt-btn:disabled { color: rgba(255,255,255,.35); cursor: not-allowed; }
+
 /* Toast */
 .toasts { position: fixed; top: 56px; right: 16px; z-index: 50; display: grid; gap: 8px; }
 .toast {
@@ -853,10 +880,15 @@ function buildTable(section, rows) {
       el('label', { class: 'dt-date' }, 'until', until));
   }
 
+  // ── Column picker state: all dataCols checked by default ──────────────────
+  const colChecked = new Map(dataCols.map(c => [c.key, true]));
+
   const copyFormat = async fmt => {
     const vis = visibleRows();
     if (!vis.length) { toast('Nothing to copy – the table has no rows.', 'error'); return; }
-    const { head, body } = matrix(dataCols, vis);
+    const selected = dataCols.filter(c => colChecked.get(c.key));
+    if (!selected.length) { toast('No columns selected – check at least one column.', 'error'); return; }
+    const { head, body } = matrix(selected, vis);
     const ok = await copyPayload(fmt.build(head, body));
     if (ok) toast(`Copied ${plural(vis.length, 'row')} as ${fmt.label}`);
     else toast('Copy failed – your browser blocked clipboard access.', 'error');
@@ -874,13 +906,62 @@ function buildTable(section, rows) {
     }
   };
 
+  // ── "Copy table as" panel with column checkboxes ──────────────────────────
+  const copyBtn = el('button', { class: 'btn secondary lg', type: 'button', 'aria-haspopup': 'true', 'aria-expanded': 'false' },
+    icon('copy'), 'Copy table as', icon('caret'));
+  const copyPanelEl = el('div', { class: 'copy-panel', role: 'dialog', 'aria-label': 'Copy table options' });
+  copyPanelEl.hidden = true;
+
+  // Column picker section
+  const colList = el('div', { class: 'copy-panel-cols' },
+    el('span', { class: 'copy-panel-label' }, 'Columns to include'));
+  const fmtBtns = [];
+  const refreshFmtBtns = () => {
+    const anyChecked = dataCols.some(c => colChecked.get(c.key));
+    for (const b of fmtBtns) b.disabled = !anyChecked;
+  };
+  for (const c of dataCols) {
+    const chk = el('input', { type: 'checkbox', 'aria-hidden': 'true' });
+    chk.checked = true;
+    const row = el('button', { class: 'copy-col-item', type: 'button', 'aria-pressed': 'true' }, chk, c.label);
+    row.addEventListener('click', () => {
+      const next = !colChecked.get(c.key);
+      colChecked.set(c.key, next);
+      chk.checked = next;
+      row.setAttribute('aria-pressed', String(next));
+      refreshFmtBtns();
+    });
+    colList.append(row);
+  }
+  copyPanelEl.append(colList);
+
+  // Format buttons section
+  const fmtSection = el('div', { class: 'copy-panel-formats' },
+    el('span', { class: 'copy-panel-label' }, 'Format'));
+  for (const fmt of FORMATS) {
+    const b = el('button', { class: 'copy-fmt-btn', type: 'button' }, fmt.label);
+    b.addEventListener('click', () => { closeCopyPanel(); copyFormat(fmt); });
+    fmtSection.append(b);
+    fmtBtns.push(b);
+  }
+  copyPanelEl.append(fmtSection);
+
+  const openCopyPanel  = () => { closeMenus(); copyPanelEl.hidden = false; copyBtn.setAttribute('aria-expanded', 'true'); };
+  const closeCopyPanel = () => { copyPanelEl.hidden = true; copyBtn.setAttribute('aria-expanded', 'false'); };
+  copyBtn.addEventListener('click', e => { e.stopPropagation(); copyPanelEl.hidden ? openCopyPanel() : closeCopyPanel(); });
+  copyPanelEl.addEventListener('click', e => e.stopPropagation());
+  // Close on Escape
+  copyPanelEl.addEventListener('keydown', e => { if (e.key === 'Escape') { closeCopyPanel(); copyBtn.focus(); } });
+  // Close when clicking outside
+  document.addEventListener('click', () => { if (!copyPanelEl.hidden) closeCopyPanel(); });
+
   const actions = el('div', { class: 'dt-actions' });
   if (section.unique) {
     const u = el('button', { class: 'btn primary lg', type: 'button' }, icon('copy'), 'Copy unique ' + section.unique.noun);
     u.addEventListener('click', copyUnique);
     actions.append(u);
   }
-  actions.append(menuButton('Copy table as', FORMATS.map(f => ({ label: f.label, onClick: () => copyFormat(f) }))));
+  actions.append(el('div', { class: 'menu-wrap' }, copyBtn, copyPanelEl));
 
   paint();
   return el('div', { class: 'dt' },
