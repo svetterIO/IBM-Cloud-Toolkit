@@ -46,7 +46,7 @@ RED        = _ansi("31")
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
-DEFAULT_OUTPUT_DIR = "output"
+DEFAULT_OUTPUT_DIR = "reports"
 SEPARATOR = "=" * 82
 
 # ── Low-level CLI runner ──────────────────────────────────────────────────────

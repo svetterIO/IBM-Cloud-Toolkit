@@ -30,7 +30,7 @@ def parse_args(argv=None):
         prog="get_custom_roles.py",
         description="Enumerate custom IAM roles in the IBM Cloud account.",
     )
-    p.add_argument("-o", metavar="OUTPUT_DIR", default="output")
+    p.add_argument("-o", metavar="OUTPUT_DIR", default="reports")
     p.add_argument("-f", metavar="OUTPUT_FILE", default="custom_roles.txt")
     p.add_argument("-v", action="store_true", help="Enable debug output")
     p.add_argument("-d", action="store_true",

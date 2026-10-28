@@ -30,7 +30,7 @@ def parse_args(argv=None):
         prog="get_user_policies.py",
         description="Identify users with direct IAM access policies.",
     )
-    p.add_argument("-o", metavar="OUTPUT_DIR", default="output")
+    p.add_argument("-o", metavar="OUTPUT_DIR", default="reports")
     p.add_argument("-f", metavar="OUTPUT_FILE", default="user_policies.txt")
     p.add_argument("-v", action="store_true", help="Enable debug output")
     return p.parse_args(argv)

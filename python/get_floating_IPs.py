@@ -28,7 +28,7 @@ def parse_args(argv=None):
         prog="get_floating_IPs.py",
         description="Enumerate floating IPs across all IBM Cloud regions.",
     )
-    p.add_argument("-o", metavar="OUTPUT_DIR", default="output")
+    p.add_argument("-o", metavar="OUTPUT_DIR", default="reports")
     p.add_argument("-f", metavar="OUTPUT_FILE", default="floating_ips.txt")
     p.add_argument("-v", action="store_true")
     return p.parse_args(argv)

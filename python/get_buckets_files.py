@@ -32,7 +32,7 @@ def parse_args(argv=None):
         prog="get_buckets_files.py",
         description="List all files in IBM Cloud Object Storage buckets.",
     )
-    p.add_argument("-o", metavar="OUTPUT_DIR", default="output")
+    p.add_argument("-o", metavar="OUTPUT_DIR", default="reports")
     p.add_argument("-f", metavar="OUTPUT_FILE", default="buckets_files.txt")
     p.add_argument("-m", metavar="MAX_ITEMS", type=int, default=100)
     p.add_argument("-p", metavar="MAX_PARALLEL", type=int, default=10,

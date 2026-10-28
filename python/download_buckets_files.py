@@ -145,7 +145,7 @@ def parse_args(argv=None):
         prog="download_buckets_files.py",
         description="Download files from IBM Cloud Object Storage buckets.",
     )
-    p.add_argument("-o", metavar="OUTPUT_DIR", default="output/bucket_files")
+    p.add_argument("-o", metavar="OUTPUT_DIR", default="reports/bucket_files")
     p.add_argument("-v", action="store_true")
     p.add_argument("-m", metavar="MAX_ITEMS", type=int, default=10)
     p.add_argument("-y", action="store_true", help="Overwrite existing files")

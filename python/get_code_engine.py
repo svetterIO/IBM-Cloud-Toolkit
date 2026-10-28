@@ -36,7 +36,7 @@ def parse_args(argv=None):
         prog="get_code_engine.py",
         description="Enumerate IBM Cloud Code Engine projects and resources.",
     )
-    p.add_argument("-o", metavar="OUTPUT_DIR", default="output")
+    p.add_argument("-o", metavar="OUTPUT_DIR", default="reports")
     p.add_argument("-v", action="store_true")
     p.add_argument("-d", action="store_true",
                    help="Full debug (show token); requires -v")

@@ -31,7 +31,7 @@ def parse_args(argv=None):
         prog="get_schematics.py",
         description="Enumerate IBM Cloud Schematics workspaces.",
     )
-    p.add_argument("-o", metavar="OUTPUT_DIR", default="output")
+    p.add_argument("-o", metavar="OUTPUT_DIR", default="reports")
     p.add_argument("-f", metavar="OUTPUT_FILE", default="schematics_workspaces.json")
     p.add_argument("-r", metavar="REGIONS", default=DEFAULT_REGIONS,
                    help="Space or comma-separated regions "

@@ -123,7 +123,7 @@ def parse_args(argv=None):
         p.add_argument("action",
                        help="Module to run (e.g. get_api_keys).")
         p.add_argument("-o", metavar="OUTPUT_DIR", default="",
-                       help="Output folder (default: time-bound 'output_YYYYMMDD_HHMMSS')")
+                       help="Report folder (default: time-bound 'reports/report_YYYYMMDD_HHMMSS')")
         p.add_argument("-v", action="store_true",
                        help="Enable debug mode")
         args, extras = p.parse_known_args(argv)
@@ -149,7 +149,7 @@ def parse_args(argv=None):
                    help="Run a single module instead of all (e.g. get_api_keys). "
                         "Omit to run everything.")
     p.add_argument("-o", metavar="OUTPUT_DIR", default="",
-                   help="Output folder for all modules (default: time-bound 'output_YYYYMMDD_HHMMSS')")
+                   help="Report folder for all modules (default: time-bound 'reports/report_YYYYMMDD_HHMMSS')")
     p.add_argument("-v", action="store_true",
                    help="Enable debug mode for all modules")
     p.add_argument("-d", action="store_true",
@@ -298,10 +298,10 @@ def main(argv=None):
         print("Error: -d flag requires -v flag to be set", file=sys.stderr)
         sys.exit(1)
 
-    # Default to a time-bound output folder (e.g. output_20261026_082939)
+    # Default to a time-bound report folder inside reports/ (e.g. reports/report_20261026_082939)
     # so runs never overwrite each other.
     if not args.o:
-        args.o = datetime.datetime.now().strftime("output_%Y%m%d_%H%M%S")
+        args.o = "reports/" + datetime.datetime.now().strftime("report_%Y%m%d_%H%M%S")
 
     # ── Single-action mode ────────────────────────────────────────────────────
     if args.action is not None:
@@ -342,7 +342,7 @@ def main(argv=None):
 
         print(" ")
         print(SEPARATOR)
-        output_dir = args.o if args.o else "output"
+        output_dir = args.o if args.o else "reports"
         print(f"Results saved to folder {BOLD}{output_dir}{RESET}")
         print(" ")
         return
@@ -423,7 +423,7 @@ def main(argv=None):
     print(SEPARATOR)
     print("IBM Cloud enumeration completed.")
 
-    output_dir = args.o if args.o else "output"
+    output_dir = args.o if args.o else "reports"
     print(f"Results saved to folder {BOLD}{output_dir}{RESET}")
 
     if args.v:

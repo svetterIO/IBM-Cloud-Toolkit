@@ -36,8 +36,8 @@ def parse_args(argv=None):
         prog="get_api_keys.py",
         description="Enumerate IBM Cloud API keys and flag non-rotated ones.",
     )
-    p.add_argument("-o", metavar="OUTPUT_DIR", default="output",
-                   help="Output folder (default: 'output')")
+    p.add_argument("-o", metavar="OUTPUT_DIR", default="reports",
+                   help="Report folder (default: 'reports')")
     p.add_argument("-f", metavar="OUTPUT_FILE", default="api_keys.txt",
                    help="Output file name (default: 'api_keys.txt')")
     p.add_argument("-d", metavar="ROTATION_DAYS", type=int, default=90,

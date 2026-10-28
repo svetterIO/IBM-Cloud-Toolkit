@@ -153,8 +153,8 @@ def parse_args(argv=None):
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    p.add_argument("-o", metavar="OUTPUT_DIR", default="output",
-                   help="Output folder (default: output)")
+    p.add_argument("-o", metavar="OUTPUT_DIR", default="reports",
+                   help="Report folder (default: reports)")
     p.add_argument("-m", metavar="MAX_ITEMS", type=int, default=1000,
                    help="Maximum object keys to scan per bucket (default: 1000)")
     p.add_argument("-p", metavar="MAX_PARALLEL", type=int, default=10,

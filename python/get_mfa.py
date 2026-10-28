@@ -30,7 +30,7 @@ def parse_args(argv=None):
         prog="get_mfa.py",
         description="Check IBM Cloud account MFA requirement status.",
     )
-    p.add_argument("-o", metavar="OUTPUT_DIR", default="output")
+    p.add_argument("-o", metavar="OUTPUT_DIR", default="reports")
     p.add_argument("-f", metavar="OUTPUT_FILE", default="account_settings.json")
     p.add_argument("-v", action="store_true")
     p.add_argument("-d", action="store_true",

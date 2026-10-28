@@ -28,7 +28,7 @@ def parse_args(argv=None):
         prog="get_regions.py",
         description="Enumerate enabled IBM Cloud regions.",
     )
-    p.add_argument("-o", metavar="OUTPUT_DIR", default="output")
+    p.add_argument("-o", metavar="OUTPUT_DIR", default="reports")
     p.add_argument("-f", metavar="OUTPUT_FILE", default="regions.txt")
     p.add_argument("-v", action="store_true")
     return p.parse_args(argv)

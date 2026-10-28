@@ -35,7 +35,7 @@ def parse_args(argv=None):
         prog="get_service_api_keys.py",
         description="Enumerate Service IDs and their API keys.",
     )
-    p.add_argument("-o", metavar="OUTPUT_DIR", default="output")
+    p.add_argument("-o", metavar="OUTPUT_DIR", default="reports")
     p.add_argument("-f", metavar="OUTPUT_FILE", default="service_api_keys.json")
     p.add_argument("-d", metavar="ROTATION_DAYS", type=int, default=90)
     p.add_argument("-p", metavar="MAX_PARALLEL", type=int, default=10)

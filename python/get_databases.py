@@ -33,7 +33,7 @@ def parse_args(argv=None):
         prog="get_databases.py",
         description="Enumerate IBM Cloud Databases.",
     )
-    p.add_argument("-o", metavar="OUTPUT_DIR", default="output")
+    p.add_argument("-o", metavar="OUTPUT_DIR", default="reports")
     p.add_argument("-f", metavar="OUTPUT_FILE", default="databases.json")
     p.add_argument("-v", action="store_true")
     return p.parse_args(argv)

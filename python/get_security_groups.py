@@ -33,7 +33,7 @@ def parse_args(argv=None):
         prog="get_security_groups.py",
         description="Enumerate IBM Cloud VPC and Classic security groups.",
     )
-    p.add_argument("-o", metavar="OUTPUT_DIR", default="output")
+    p.add_argument("-o", metavar="OUTPUT_DIR", default="reports")
     p.add_argument("-v", action="store_true")
     return p.parse_args(argv)
 

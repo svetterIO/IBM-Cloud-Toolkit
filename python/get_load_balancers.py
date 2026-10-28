@@ -32,7 +32,7 @@ def parse_args(argv=None):
         prog="get_load_balancers.py",
         description="Enumerate IBM Cloud VPC Load Balancers.",
     )
-    p.add_argument("-o", metavar="OUTPUT_DIR", default="output")
+    p.add_argument("-o", metavar="OUTPUT_DIR", default="reports")
     p.add_argument("-f", metavar="OUTPUT_FILE", default="load_balancers.json")
     p.add_argument("-v", action="store_true", help="Enable debug output")
     return p.parse_args(argv)

@@ -31,7 +31,7 @@ def parse_args(argv=None):
         prog="get_VSIs.py",
         description="Enumerate IBM Cloud VSIs in each region.",
     )
-    p.add_argument("-o", metavar="OUTPUT_DIR", default="output")
+    p.add_argument("-o", metavar="OUTPUT_DIR", default="reports")
     p.add_argument("-f", metavar="OUTPUT_FILE", default="VSIs.json")
     p.add_argument("-v", action="store_true")
     return p.parse_args(argv)

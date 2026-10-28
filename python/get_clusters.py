@@ -31,7 +31,7 @@ def parse_args(argv=None):
         prog="get_clusters.py",
         description="Enumerate IBM Cloud Kubernetes/OpenShift clusters.",
     )
-    p.add_argument("-o", metavar="OUTPUT_DIR", default="output")
+    p.add_argument("-o", metavar="OUTPUT_DIR", default="reports")
     p.add_argument("-f", metavar="OUTPUT_FILE", default="clusters.json")
     p.add_argument("-v", action="store_true")
     p.add_argument("-d", action="store_true",

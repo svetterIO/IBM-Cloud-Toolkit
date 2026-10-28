@@ -32,7 +32,7 @@ def parse_args(argv=None):
         prog="get_users.py",
         description="Enumerate IBM Cloud account users and flag inactive ones.",
     )
-    p.add_argument("-o", metavar="OUTPUT_DIR", default="output")
+    p.add_argument("-o", metavar="OUTPUT_DIR", default="reports")
     p.add_argument("-f", metavar="OUTPUT_FILE", default="users.txt")
     p.add_argument("-p", metavar="MAX_PARALLEL", type=int, default=10)
     p.add_argument("-v", action="store_true")
