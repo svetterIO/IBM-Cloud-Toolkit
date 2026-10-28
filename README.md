@@ -138,7 +138,7 @@ python -m pip install -r requirements.txt
 
 ## Quick Start
 
-![ibm_cloud_enum.sh execution](docs/images/ibm_cloud_enum.png)
+![ibm_cloud_enum.py execution](docs/images/ibm_cloud_enum.png)
 
 ### Bash (Linux / macOS)
 
