@@ -276,7 +276,7 @@ def _build_flags(args, flag_set: str) -> list[str]:
     if flag_set == "service_api":
         flags = common + ["-p", str(args.p)]
         if args.d:
-            flags.append("--full-debug")
+            flags.append("-d")
         return flags
     if flag_set == "users":
         return common + (["-d"] if args.d else []) + ["-p", str(args.p)]

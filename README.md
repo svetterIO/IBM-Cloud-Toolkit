@@ -20,9 +20,10 @@ Contributions and community feedback are welcome! If you find these scripts usef
 IBM-Cloud-Toolkit/
 ├── bash/           Bash modules, utils.sh, ibm_cloud_enum.sh
 ├── python/         Python modules, utils.py, ibm_cloud_enum.py
-├── report/         Offline HTML report viewer (report/index.html)
+├── reports/        Offline HTML report viewer (reports/index.html)
+│                   Run folders (reports/report_YYYYMMDD_HHMMSS/) are git-ignored
 ├── install/        IBM Cloud CLI installers (Bash, PowerShell, Python)
-├── docs/
+├── docs/           Porting guides, pentest observation templates, test plans
 │   └── images/     README images
 ├── requirements.txt
 ├── LICENSE
@@ -158,25 +159,52 @@ python python\ibm_cloud_enum.py
 
 ---
 
-## Output directory
+## Output (reports) directory
 
-The runners (`ibm_cloud_enum.sh` / `ibm_cloud_enum.py`) write every run into a **time-bound folder**, e.g. `output_20261026_082939`, so runs never overwrite each other. Use `-o OUTPUT_DIR` to choose a different folder. Individual modules started on their own still default to `output`.
+The Python runner (`ibm_cloud_enum.py`) writes every run into a **time-bound folder inside `reports/`**, e.g. `reports/report_20261026_082939`, so runs never overwrite each other. Use `-o OUTPUT_DIR` to choose a different path.
 
-`output/` and `output_*/` are listed in `.gitignore`, so client data never ends up in a git commit.
+`reports/*` is listed in `.gitignore` with a `!reports/index.html` exception, so the report viewer is always committed but run folders (which contain client data) never are.
 
 ---
 
-## HTML Report
+## HTML Report (Offline SPA)
 
-[`report/index.html`](report/index.html) is a single-page report viewer in the IBM Carbon style. It needs **no web server and no internet access** – just open the file in your browser.
+[`reports/index.html`](reports/index.html) is a fully self-contained single-page application in the IBM Carbon design style. It needs **no web server, no internet access, and no build step** — just open the file in your browser.
 
-1. Click **Select folder** (or drag and drop) and choose the folder containing your `output_*` directories, or a single output folder.
-2. The latest run is selected automatically; use the **Output directory** dropdown to switch between runs.
-3. Each module is a collapsible section. Tables can be filtered and sorted, and copied as plain text, Markdown, Excel (tab-separated) or Word (formatted table). Copies respect the active filters.
-4. Besides the text filter (searching `active` matches only active keys, `inactive` only inactive ones), tables with a creation date offer **Created at from / until** date pickers to show only keys created on or after / on or before a day (compared in UTC, both days inclusive).
-5. Use the **Dark mode** switch in the header to change the theme (IBM Carbon white / gray 100). The choice is remembered in the browser; without a saved choice the operating system preference is used.
+### Loading data
 
-Currently available: **API keys** (all keys, and keys not rotated within the rotation threshold) with a **Copy unique API key IDs** button and a **Status** column (`Active`, `Inactive (disabled)`, `Inactive (expired)`, or `Unknown` for runs created before the status was recorded). A key is inactive when it is disabled or its `expires_at` date has passed. **Service API keys** (all keys, keys with an exposed key value, and keys not rotated within the rotation threshold) with service name/ID, description, the same Status column, expiry, locked flag, a **Key exposed** column, a clickable console link and the **API key** value. The key is masked in a read-only password field; the eye button reveals it in full, selected and ready to copy. The key value is never part of the text filter or of any "Copy table as" format. More modules will follow. All data is read locally in the browser; a Content-Security-Policy blocks any network request.
+- Click **Select folder** (or drag and drop the `reports/` folder onto the page).
+- All `report_YYYYMMDD_HHMMSS` run folders inside are discovered automatically; the latest run is selected by default.
+- A dropdown lets you switch between runs. Legacy `output_YYYYMMDD_HHMMSS` folders are also recognised for backwards compatibility.
+- All data is read locally in the browser. A strict Content-Security-Policy (`default-src 'none'`) blocks every network request — no data ever leaves your machine.
+
+### Tables
+
+- Filterable (text search) and sortable by any column.
+- Date columns offer **from / until** date pickers (UTC, both days inclusive).
+- Tag columns (e.g. Status, Key exposed) use word-boundary matching so searching `active` finds `Active` but not `Inactive`.
+- Secret columns (e.g. API key values) are masked in a read-only password field with an eye-button reveal. Secret values are never included in the text filter, sorting, or any copy format.
+
+### Copying
+
+- **Copy table as** — opens a panel with:
+  - **Column picker**: toggle checkboxes to include or exclude individual columns from the copy.
+  - **Format**: Plain text, Markdown, Excel (tab-separated), Word (formatted HTML table).
+- **Copy unique `<IDs>`** — copies de-duplicated values of one column (e.g. all unique API key IDs).
+- All copy operations honour the active filter and sort order.
+
+### UI
+
+- **Dark mode** switch (IBM Carbon Gray 100 theme). Choice is persisted in `localStorage`; defaults to OS preference.
+- Fully keyboard-accessible with visible focus rings, `aria-*` attributes, and `prefers-reduced-motion` support.
+- Responsive below 672 px.
+
+### Currently registered modules
+
+| Module | Sections | Key fields |
+|---|---|---|
+| **API keys** (`get_api_keys`) | All keys · Non-rotated (>90 days) | ID, Name, Created at, Created by, Status |
+| **Service API keys** (`get_service_api_keys`) | All keys · Exposed keys · Non-rotated (>90 days) | Service name/ID, Key name/ID, Created at, Status, Locked, Key exposed, Console link, API key (masked) |
 
 ---
 
@@ -192,7 +220,7 @@ Enumerate IBM Cloud API keys and flag non-rotated ones.
 
 options:
   -h            show this help message and exit
-  -o OUTPUT_DIR  Output folder (default: 'output')
+  -o OUTPUT_DIR  Report folder (default: 'reports')
   -f OUTPUT_FILE Output file name (default: 'api_keys.txt')
   -d ROTATION_DAYS  Rotation threshold in days (default: 90)
   -v            Enable debug output
@@ -258,6 +286,18 @@ Enumerates all IBM Cloud VPC Load Balancers in each enabled region, with their l
 #### - [get_code_engine](bash/get_code_engine.sh) / [get_code_engine.py](python/get_code_engine.py)
 Enumerates all IBM Cloud Code Engine projects. For each project, retrieves Applications (including environment variables and public endpoint status), Functions, ConfigMaps, and Secrets.
 
+#### - [get_service_api_keys](python/get_service_api_keys.py) *(Python only)*
+Enumerates all Service IDs and their associated API keys. Detects keys whose plaintext value is returned by the IAM API (exposed/leaked keys) and flags keys not rotated within a configurable threshold (default: 90 days). Verbose (`-v`) mode shows per-key debug lines with IBM Cloud CLI commands; full-debug (`-d`) appends the exact `ibmcloud iam service-api-keys` command for each key.
+
+#### - [get_container_registry](python/get_container_registry.py) *(Python only)*
+Enumerates IBM Cloud Container Registry namespaces, images, and settings. Flags images with known vulnerabilities reported by Vulnerability Advisor and images that have not been scanned.
+
+#### - [get_my_access](python/get_my_access.py) *(Python only)*
+Enumerates the access capabilities of the identity currently logged in to the IBM Cloud CLI (user, service ID or trusted profile): identity details decoded from the IAM token, direct access policies, and the policies of all access groups the identity belongs to.
+
+#### - [search_buckets_file_names](python/search_buckets_file_names.py) *(Python only, opt-in)*
+Scans all Cloud Object Storage bucket file keys for names that suggest sensitive content (passwords, credentials, API keys, certificates, etc.). Run with `-s` flag in the full runner or independently. Results include instance name, bucket, region, full object key, and matched keywords.
+
 ---
 
 ## Installers
@@ -273,10 +313,36 @@ Enumerates all IBM Cloud Code Engine projects. For each project, retrieves Appli
 ## Recent Changes
 
 ### Version 2.0
-- **Python Implementation**: Added a full Python 3 implementation of every Bash module. The Python version works on Linux, macOS and Windows without requiring `jq` or `curl`.
-- **Repository Reorganization**: Bash scripts moved to `bash/`, Python scripts to `python/`, installers to `install/`, and images to `docs/images/`.
-- **Cross-platform Installers**: Added `install/install_ibmcloud_cli.ps1` (Windows PowerShell) and `install/install_ibmcloud_cli.py` (cross-platform Python) with plugin installation support.
-- **Line-Ending Config**: Added `.gitattributes` (LF for `.sh`/`.py`, CRLF for `.ps1`) and `.editorconfig` for consistent checkout across all operating systems.
+
+#### Python implementation
+- Full Python 3.8+ implementation of every Bash module — works on Linux, macOS, and Windows without `jq` or `curl`.
+- Single entry-point runner `python/ibm_cloud_enum.py` executes all modules sequentially or a single named module (`python ibm_cloud_enum.py get_api_keys`).
+- Two-phase argument parser: runner-level flags (`-o`, `-v`, `-d`) are consumed by the runner; all remaining flags are forwarded as-is to the target module, preventing flag collisions.
+- Time-bound output folders: every full run writes to `reports/report_YYYYMMDD_HHMMSS/` automatically so runs never overwrite each other.
+
+#### New Python-only modules
+- **`get_service_api_keys`** — enumerates Service IDs and their API keys; detects exposed (leaked) plaintext key values and non-rotated keys; verbose mode shows per-key CLI commands with leak warnings in red; full-debug mode appends the exact `ibmcloud iam service-api-keys` replay command for every key.
+- **`get_container_registry`** — enumerates Container Registry namespaces and images; flags CVE-affected images via Vulnerability Advisor.
+- **`get_my_access`** — decodes the current IAM token identity, lists direct access policies, and enumerates access group memberships and their policies.
+- **`search_buckets_file_names`** — scans COS bucket object keys for names suggesting sensitive content (credentials, certificates, API keys); opt-in via `-s` in the full runner.
+
+#### Offline HTML report viewer (`reports/index.html`)
+A fully self-contained single-page application (no server, no CDN, no build step) in the IBM Carbon design style.
+- **Data loading**: folder picker (`<input webkitdirectory>`) and drag-and-drop; auto-discovers all `report_*` run folders; `report_*` and legacy `output_*` both recognised.
+- **Multi-run support**: dropdown to switch between runs; latest run selected automatically.
+- **Tables**: sortable headers, text filter with word-boundary matching for tag columns, date-range filter (UTC) for timestamp columns.
+- **Secret columns**: API key values masked in read-only password fields; eye-button reveal; value excluded from all filters, sorting, and copy formats.
+- **Copy table as**: opens a two-section panel — column picker (per-column checkboxes, all on by default; format buttons disabled when nothing is checked) and four copy formats: Plain text, Markdown, Excel (tab-separated), Word (formatted HTML table).
+- **Copy unique IDs**: de-duplicates a chosen column and copies the result with a count toast.
+- **Dark mode**: IBM Carbon Gray 100; persisted in `localStorage`; defaults to OS preference.
+- **Security**: `default-src 'none'` CSP; DOM built with a safe `el()` helper (no `innerHTML` for data); keyboard accessible; `prefers-reduced-motion`; responsive.
+- **gitignore**: `reports/*` with `!reports/index.html` — viewer is always tracked; run folders (client data) are never committed.
+
+#### Repository layout
+- Bash scripts → `bash/`, Python scripts → `python/`, installers → `install/`, images → `docs/images/`.
+- Cross-platform installers: `install/install_ibmcloud_cli.ps1` (Windows PowerShell) and `install/install_ibmcloud_cli.py` (cross-platform Python).
+- Line-ending config: `.gitattributes` (LF for `.sh`/`.py`, CRLF for `.ps1`) and `.editorconfig`.
+- `docs/` expanded with porting guide, pentest observation templates, and test plans.
 
 ### Version 1.2
 - **CLI-Based Authentication**: Removed IBMCLOUD_API_KEY environment variable requirement. Access tokens are now retrieved directly from authenticated IBM Cloud CLI sessions (`ibmcloud login`), supporting environments where API key creation is restricted.
