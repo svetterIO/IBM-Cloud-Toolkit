@@ -225,8 +225,18 @@ select:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
 table { width: 100%; border-collapse: collapse; }
 th {
   height: 40px; padding: 0; background: var(--layer-accent); text-align: left; font-weight: 600;
-  border-bottom: 1px solid var(--layer-accent); white-space: nowrap;
+  border-bottom: 1px solid var(--layer-accent); white-space: nowrap; position: relative;
 }
+.col-resize-handle {
+  position: absolute; top: 0; right: 0; width: 6px; height: 100%;
+  cursor: col-resize; user-select: none; z-index: 1;
+}
+.col-resize-handle::after {
+  content: ''; position: absolute; top: 8px; bottom: 8px; right: 2px; width: 2px;
+  background: var(--border-strong); border-radius: 1px;
+}
+.col-resize-handle:hover::after,
+.col-resize-handle.dragging::after { background: var(--primary); }
 .secret-cell { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
 .secret-cell input {
   flex: none; height: 32px; padding: 0 8px; border: 0; border-bottom: 1px solid var(--border-strong);
@@ -405,6 +415,26 @@ function withServiceKeyInfo(row) {
   };
 }
 
+const CUSTOM_ROLE_COLUMNS = [
+  { key: 'display_name',       label: 'Display name' },
+  { key: 'name',               label: 'Role ID (name)' },
+  { key: 'service_name',       label: 'Service', mono: true },
+  { key: 'description',        label: 'Description' },
+  { key: 'actions_text',       label: 'Actions' },
+  { key: 'created_at',         label: 'Created at', mono: true, date: true },
+  { key: 'created_by_id',      label: 'Created by', mono: true },
+  { key: 'last_modified_at',   label: 'Last modified at', mono: true },
+  { key: 'last_modified_by_id',label: 'Last modified by', mono: true },
+  { key: 'crn',                label: 'CRN', mono: true },
+];
+
+function withCustomRoleInfo(row) {
+  return {
+    ...row,
+    actions_text: Array.isArray(row.actions) ? row.actions.join(', ') : (row.actions || ''),
+  };
+}
+
 const MODULES = [
   {
     id: 'api-keys',
@@ -469,6 +499,22 @@ const MODULES = [
         unique: { key: 'id', noun: 'API key IDs' },
         missing: 'non_rotated_service_api_keys.json was not found. get_service_api_keys only writes this file when at least one key ' +
                  'is older than the rotation threshold, so all keys may be within the threshold (or the module was not run).',
+      },
+    ],
+  },
+  {
+    id: 'custom-roles',
+    title: 'Custom IAM roles',
+    script: 'get_custom_roles',
+    sections: [
+      {
+        id: 'all',
+        title: 'All custom IAM roles',
+        file: 'custom_roles.txt',
+        columns: CUSTOM_ROLE_COLUMNS,
+        prepare: withCustomRoleInfo,
+        unique: { key: 'crn', noun: 'role CRNs' },
+        missing: 'custom_roles.txt was not found in this run. Run get_custom_roles (or the full runner) to generate it.',
       },
     ],
   },
@@ -853,11 +899,46 @@ function buildTable(section, rows) {
     }
   };
 
+  // One <col> per column — we set min-width on it to resize without touching other columns
+  // or breaking table-layout:auto / horizontal scroll.
+  const colEls = cols.map(() => document.createElement('col'));
+  const colgroup = document.createElement('colgroup');
+  colEls.forEach(c => colgroup.append(c));
+
   const headRow = el('tr');
-  for (const c of cols) {
-    if (c.secret) { headRow.append(el('th', { scope: 'col', class: 'th-static' }, c.label)); continue; }
+  for (let ci = 0; ci < cols.length; ci++) {
+    const c = cols[ci];
+    const colEl = colEls[ci];
+
+    const handle = el('div', { class: 'col-resize-handle', 'aria-hidden': 'true', title: 'Drag to resize column' });
+    handle.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      handle.classList.add('dragging');
+      handle.setPointerCapture(e.pointerId);
+      // Use the th's live width as the drag baseline — this is always correct because
+      // we are only setting min-width, so the th already reflects the true column width.
+      const th = handle.closest('th');
+      const startX = e.clientX;
+      const startW = th.getBoundingClientRect().width;
+      const onMove = mv => {
+        const newW = Math.max(48, startW + mv.clientX - startX);
+        colEl.style.minWidth = newW + 'px';
+      };
+      const onUp = () => {
+        handle.classList.remove('dragging');
+        handle.removeEventListener('pointermove', onMove);
+        handle.removeEventListener('pointerup', onUp);
+      };
+      handle.addEventListener('pointermove', onMove);
+      handle.addEventListener('pointerup', onUp);
+    });
+
+    if (c.secret) {
+      headRow.append(el('th', { scope: 'col', class: 'th-static' }, c.label, handle));
+      continue;
+    }
     const b = el('button', { class: 'th-btn', type: 'button', title: 'Sort by ' + c.label }, el('span', null, c.label), icon('arrowUp'));
-    const th = el('th', { scope: 'col', 'aria-sort': 'none' }, b);
+    const th = el('th', { scope: 'col', 'aria-sort': 'none' }, b, handle);
     b.addEventListener('click', () => {
       if (state.key === c.key) state.dir = -state.dir; else { state.key = c.key; state.dir = 1; }
       paint();
@@ -966,7 +1047,7 @@ function buildTable(section, rows) {
   paint();
   return el('div', { class: 'dt' },
     el('div', { class: 'dt-toolbar' }, el('div', { class: 'dt-search' }, icon('search'), search), dateFilters, count, actions),
-    el('div', { class: 'table-wrap' }, el('table', null, el('thead', null, headRow), tbody)));
+    el('div', { class: 'table-wrap' }, el('table', null, colgroup, el('thead', null, headRow), tbody)));
 }
 
 /* ───────────────────────── Loading + rendering ───────────────────────── */
