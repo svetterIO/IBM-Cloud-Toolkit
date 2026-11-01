@@ -4,10 +4,11 @@ python/get_security_groups.py
 
 Enumerates IBM Cloud VPC and Classic Infrastructure security groups.
 Flags VPC security groups with unrestricted inbound rules (0.0.0.0/0).
+Fetches the list of resources (targets) attached to each VPC security group.
 
 Output files:
-  <output_dir>/security_groups.json              – all VPC security groups
-  <output_dir>/security_groups_unrestricted.json – VPC SGs with 0.0.0.0/0 inbound
+  <output_dir>/security_groups.json              – all VPC security groups (with targets)
+  <output_dir>/security_groups_unrestricted.json – VPC SGs with 0.0.0.0/0 inbound (with targets)
   <output_dir>/security_groups_classic.json      – Classic infrastructure SGs
 """
 
@@ -34,7 +35,8 @@ def parse_args(argv=None):
         description="Enumerate IBM Cloud VPC and Classic security groups.",
     )
     p.add_argument("-o", metavar="OUTPUT_DIR", default="reports")
-    p.add_argument("-v", action="store_true")
+    p.add_argument("-v", action="store_true", help="Verbose: show one line per security group")
+    p.add_argument("-d", action="store_true", help="Full debug: append ibmcloud command to each line; requires -v")
     return p.parse_args(argv)
 
 
@@ -43,9 +45,7 @@ def target_region(region: str) -> bool:
     return result.returncode == 0
 
 
-def get_vpc_sgs(region: str, debug: bool) -> list[dict]:
-    if debug:
-        print(f"{BOLD}[DEBUG]{RESET} Running: ibmcloud is security-groups --all-resource-groups --output json")
+def get_vpc_sgs(region: str) -> list[dict]:
     result = _ibmcloud("is", "security-groups", "--all-resource-groups", "--output", "json")
     if result.returncode != 0 or not result.stdout.strip():
         return []
@@ -58,6 +58,32 @@ def get_vpc_sgs(region: str, debug: bool) -> list[dict]:
     return [
         {"region": region, "name": sg.get("name"), "id": sg.get("id"), "rules": sg.get("rules") or []}
         for sg in raw
+    ]
+
+
+def get_sg_targets(sg_id: str, region: str, show_cmd: bool) -> list[dict]:
+    """Call ibmcloud is security-group-targets <sg_id> and return a list of
+    {id, name, resource_type} objects.  Returns [] gracefully on any failure."""
+    cmd_str = f"ibmcloud is security-group-targets {sg_id} --output json"
+    if show_cmd:
+        # printed by caller alongside the main -v line
+        pass
+    result = _ibmcloud("is", "security-group-targets", sg_id, "--output", "json")
+    if result.returncode != 0 or not result.stdout.strip():
+        return []
+    try:
+        raw = json.loads(result.stdout)
+        if not isinstance(raw, list):
+            return []
+    except json.JSONDecodeError:
+        return []
+    return [
+        {
+            "id": t.get("id"),
+            "name": t.get("name"),
+            "resource_type": t.get("resource_type"),
+        }
+        for t in raw
     ]
 
 
@@ -95,6 +121,10 @@ def get_classic_sgs(debug: bool) -> list[dict]:
 def main(argv=None):
     args = parse_args(argv)
 
+    if args.d and not args.v:
+        print("Error: -d flag requires -v flag to be set", file=sys.stderr)
+        sys.exit(1)
+
     require_ibmcloud_login()
     require_ibmcloud_is()
     require_ibmcloud_sl()
@@ -116,22 +146,49 @@ def main(argv=None):
         print(f"{BOLD}[DEBUG]{RESET} Found {len(regions)} region(s) to process")
 
     all_vpc: list[dict] = []
-    unrestricted: list[dict] = []
     region_counts: dict[str, int] = {}
 
-    for region in regions:
-        if args.v:
-            print(f"{BOLD}[DEBUG]{RESET} Processing region: {region}")
+    for i, region in enumerate(regions, 1):
+        if not args.v:
+            print(f"\rScanning region {i}/{len(regions)}: {region:<20}", end="", flush=True)
         if not target_region(region):
             warning(f"Failed to target region {region}")
             region_counts[region] = 0
             continue
-        sgs = get_vpc_sgs(region, args.v)
+        sgs = get_vpc_sgs(region)
         region_counts[region] = len(sgs)
-        if args.v:
-            print(f"{BOLD}[DEBUG]{RESET} Region {region}: Found {len(sgs)} security group(s)")
         all_vpc.extend(sgs)
-        unrestricted.extend(sg for sg in sgs if is_unrestricted(sg))
+
+    if not args.v:
+        print()  # newline after the final \r progress line
+
+    # ── Fetch targets for every collected SG ─────────────────────────────────
+    total_sgs = len(all_vpc)
+    for i, sg in enumerate(all_vpc, 1):
+        sg_id = sg.get("id", "")
+        sg_name = sg.get("name", "")
+        sg_region = sg.get("region", "")
+
+        if not args.v:
+            print(f"\rFetching targets {i}/{total_sgs}: {sg_name:<30}", end="", flush=True)
+
+        targets = get_sg_targets(sg_id, sg_region, args.d)
+        sg["targets"] = targets
+
+        if args.v:
+            line = (
+                f"{BOLD}[DEBUG]{RESET} SG: {sg_name} — region: {sg_region}"
+                f" — {len(targets)} target(s)"
+            )
+            if args.d:
+                line += f" — {CYAN}ibmcloud is security-group-targets {sg_id} --output json{RESET}"
+            print(line)
+
+    if not args.v and total_sgs > 0:
+        print()  # newline after the final \r targets progress line
+
+    # Re-compute unrestricted from the now-enriched list
+    unrestricted = [sg for sg in all_vpc if is_unrestricted(sg)]
 
     total_vpc = len(all_vpc)
     total_unres = len(unrestricted)
@@ -151,7 +208,8 @@ def main(argv=None):
             if count > 0:
                 print(f"  {BOLD}{region}:{RESET} {count} security group(s)")
                 for sg in [s for s in all_vpc if s.get("region") == region]:
-                    print(f"    - {sg['name']}")
+                    target_count = len(sg.get("targets") or [])
+                    print(f"    - {sg['name']} ({target_count} target(s))")
         print()
         vpc_path.write_text(json.dumps(all_vpc, indent=2), encoding="utf-8")
         print(f"All VPC Security Groups saved to: {BOLD}{vpc_path}{RESET}")
