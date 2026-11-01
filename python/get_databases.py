@@ -22,7 +22,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from utils import (
-    BOLD, ORANGE, RESET, SEPARATOR,
+    BOLD, CYAN, ORANGE, RESET, SEPARATOR,
     _ibmcloud, ensure_output_dir, print_console_link,
     require_ibmcloud_cdb, require_ibmcloud_login, warning,
 )
@@ -35,13 +35,12 @@ def parse_args(argv=None):
     )
     p.add_argument("-o", metavar="OUTPUT_DIR", default="reports")
     p.add_argument("-f", metavar="OUTPUT_FILE", default="databases.json")
-    p.add_argument("-v", action="store_true")
+    p.add_argument("-v", action="store_true", help="Verbose: one line per database with endpoint type and ibmcloud command")
+    p.add_argument("-d", action="store_true", help="Full debug: also show service-instance lookup command; requires -v")
     return p.parse_args(argv)
 
 
-def get_cdb_deployments(debug: bool, out_dir: Path) -> list[dict]:
-    if debug:
-        print(f"{BOLD}[DEBUG]{RESET} Running: ibmcloud cdb deployments --json")
+def get_cdb_deployments(out_dir: Path) -> list[dict]:
     result = _ibmcloud("cdb", "deployments", "--json")
     if result.returncode != 0:
         (out_dir / "cdb_deployments.stderr").write_text(result.stderr, encoding="utf-8")
@@ -58,11 +57,8 @@ def get_cdb_deployments(debug: bool, out_dir: Path) -> list[dict]:
 
 
 def get_resource_instances(service_name: str, label: str, stem: str,
-                           debug: bool, out_dir: Path) -> list[dict]:
+                           out_dir: Path) -> list[dict]:
     """List resource controller instances of a service (e.g. DB2, Cloudant)."""
-    if debug:
-        print(f"{BOLD}[DEBUG]{RESET} Running: ibmcloud resource service-instances "
-              f"--service-name {service_name} --all-resource-groups --output json")
     result = _ibmcloud(
         "resource", "service-instances",
         "--service-name", service_name,
@@ -83,10 +79,10 @@ def get_resource_instances(service_name: str, label: str, stem: str,
         return []
 
 
-def get_instance(db_guid: str, debug: bool) -> dict:
+def get_instance(db_guid: str, show_cmd: bool) -> dict:
     """Return the resource controller details of a service instance."""
-    if debug:
-        print(f"{BOLD}[DEBUG]{RESET} Running: ibmcloud resource service-instance {db_guid} --output json")
+    if show_cmd:
+        print(f"{BOLD}[DEBUG]{RESET} {CYAN}ibmcloud resource service-instance {db_guid} --output json{RESET}")
     result = _ibmcloud("resource", "service-instance", db_guid, "--output", "json")
     if result.returncode != 0 or not result.stdout.strip():
         return {}
@@ -124,11 +120,8 @@ def _collect_host_ports(node, found: set) -> None:
             _collect_host_ports(item, found)
 
 
-def cdb_public_endpoints(ref: str, debug: bool) -> list[str]:
+def cdb_public_endpoints(ref: str) -> list[str]:
     """Return the public hostname:port pairs of a Cloud Databases deployment."""
-    if debug:
-        print(f"{BOLD}[DEBUG]{RESET} Running: ibmcloud cdb deployment-connections {ref} "
-              "--endpoint-type public --all --output json")
     result = subprocess.run(
         ["ibmcloud", "cdb", "deployment-connections", ref,
          "--endpoint-type", "public", "--all", "--output", "json"],
@@ -152,6 +145,10 @@ def cdb_public_endpoints(ref: str, debug: bool) -> list[str]:
 def main(argv=None):
     args = parse_args(argv)
 
+    if args.d and not args.v:
+        print("Error: -d flag requires -v flag to be set", file=sys.stderr)
+        sys.exit(1)
+
     require_ibmcloud_login()
     require_ibmcloud_cdb()
     out_dir = ensure_output_dir(args.o)
@@ -163,14 +160,12 @@ def main(argv=None):
     print(f"Enumerating IBM Cloud {ORANGE}{BOLD}Databases{RESET}...")
     print(" ")
 
-    cdb = get_cdb_deployments(args.v, out_dir)
-    db2 = get_resource_instances("dashdb-for-transactions", "DB2", "db2_instances", args.v, out_dir)
-    cloudant = get_resource_instances("cloudantnosqldb", "Cloudant", "cloudant_instances", args.v, out_dir)
+    cdb = get_cdb_deployments(out_dir)
+    db2 = get_resource_instances("dashdb-for-transactions", "DB2", "db2_instances", out_dir)
+    cloudant = get_resource_instances("cloudantnosqldb", "Cloudant", "cloudant_instances", out_dir)
 
     if args.v:
-        print(f"{BOLD}[DEBUG]{RESET} Found {len(cdb)} Cloud Database(s)")
-        print(f"{BOLD}[DEBUG]{RESET} Found {len(db2)} DB2 instance(s)")
-        print(f"{BOLD}[DEBUG]{RESET} Found {len(cloudant)} Cloudant instance(s)")
+        print(f"{BOLD}[DEBUG]{RESET} Found {len(cdb)} Cloud Database(s), {len(db2)} DB2, {len(cloudant)} Cloudant")
 
     combined = (
         [{**d, "db_service": "cloud-databases"} for d in cdb]
@@ -196,23 +191,40 @@ def main(argv=None):
     _ibmcloud("target", "--unset-resource-group", "-q")
 
     public_dbs: list[dict] = []
-    for db in combined:
+    for i, db in enumerate(combined, 1):
+        if not args.v:
+            name_hint = db.get("name", "")[:24]
+            print(f"\rChecking database {i}/{total}: {name_hint:<24}", end="", flush=True)
         guid = db.get("guid") or db.get("id", "")
         if not guid:
             continue
         service = db["db_service"]
-        instance = get_instance(guid, args.v)
+        instance = get_instance(guid, args.d)
         if not instance:
             continue
         ep_type = (instance.get("parameters") or {}).get("service-endpoints") or "private"
         ext_endpoint = extension_public_endpoint(instance)
+        has_public = ep_type != "private" or (service == "cloudant" and ext_endpoint)
+
         if args.v:
-            print(f"{BOLD}[DEBUG]{RESET} Database \"{instance.get('name')}\": endpoint type = {ep_type}")
-        if ep_type == "private" and not (service == "cloudant" and ext_endpoint):
+            name = instance.get('name', guid)
+            if not has_public:
+                print(f"{BOLD}[DEBUG]{RESET} \"{name}\" ({service}) — endpoint: {ep_type} — skipped")
+            elif service == "cloud-databases":
+                cdb_ref = db.get("crn") or db.get("name", "")
+                print(f"{BOLD}[DEBUG]{RESET} \"{name}\" ({service}) — endpoint: {ep_type} — "
+                      f"{CYAN}ibmcloud cdb deployment-connections {cdb_ref} "
+                      f"--endpoint-type public --all --output json{RESET}")
+            else:
+                print(f"{BOLD}[DEBUG]{RESET} \"{name}\" ({service}) — endpoint: {ep_type} — "
+                      f"public endpoint: {ext_endpoint or 'none'}")
+
+        if not has_public:
             continue
 
         if service == "cloud-databases":
-            endpoints = cdb_public_endpoints(db.get("crn") or db.get("name", ""), args.v)
+            cdb_ref = db.get("crn") or db.get("name", "")
+            endpoints = cdb_public_endpoints(cdb_ref)
         else:
             endpoints = [ext_endpoint] if ext_endpoint else []
         public_dbs.append({
@@ -224,6 +236,8 @@ def main(argv=None):
             "public_endpoints": endpoints,
         })
 
+    if not args.v:
+        print()  # newline after the final \r progress line
     output_path.write_text(json.dumps(combined, indent=2), encoding="utf-8")
     print()
     print(f"All databases saved to: {BOLD}{output_path}{RESET}")
