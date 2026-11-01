@@ -20,7 +20,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from utils import (
-    BOLD, ORANGE, RESET, SEPARATOR, YELLOW,
+    BOLD, CYAN, ORANGE, RESET, SEPARATOR, YELLOW,
     _ibmcloud, ensure_output_dir, get_regions,
     print_console_link, require_ibmcloud_is, require_ibmcloud_login, warning,
 )
@@ -33,7 +33,8 @@ def parse_args(argv=None):
     )
     p.add_argument("-o", metavar="OUTPUT_DIR", default="reports")
     p.add_argument("-f", metavar="OUTPUT_FILE", default="VSIs.json")
-    p.add_argument("-v", action="store_true")
+    p.add_argument("-v", action="store_true", help="Verbose: show region and VSI count per region")
+    p.add_argument("-d", action="store_true", help="Full debug: also show ibmcloud command per region; requires -v")
     return p.parse_args(argv)
 
 
@@ -42,9 +43,7 @@ def target_region(region: str) -> bool:
     return result.returncode == 0
 
 
-def get_vsis_in_region(region: str, debug: bool) -> list[dict]:
-    if debug:
-        print(f"{BOLD}[DEBUG]{RESET} Running: ibmcloud is instances --output json")
+def get_vsis_in_region(region: str) -> list[dict]:
     result = _ibmcloud("is", "instances", "--output", "json")
     if result.returncode != 0 or not result.stdout.strip():
         return []
@@ -70,12 +69,19 @@ def get_vsis_in_region(region: str, debug: bool) -> list[dict]:
             "image": (v.get("image") or {}).get("name"),
             "metadata_enabled": (v.get("metadata_service") or {}).get("enabled", False),
             "floating_IPs": ", ".join(floating_ips),
+            "security_groups": ", ".join(
+                sg.get("name", "") for sg in (v.get("security_groups") or [])
+            ),
         })
     return vsis
 
 
 def main(argv=None):
     args = parse_args(argv)
+
+    if args.d and not args.v:
+        print("Error: -d flag requires -v flag to be set", file=sys.stderr)
+        sys.exit(1)
 
     require_ibmcloud_login()
     require_ibmcloud_is()
@@ -98,18 +104,24 @@ def main(argv=None):
     all_vsis: list[dict] = []
     region_counts: dict[str, int] = {}
 
-    for region in regions:
-        if args.v:
-            print(f"{BOLD}[DEBUG]{RESET} Processing region: {region}")
+    for i, region in enumerate(regions, 1):
+        if not args.v:
+            print(f"\rScanning region {i}/{len(regions)}: {region:<20}", end="", flush=True)
         if not target_region(region):
             warning(f"Failed to target region {region}")
             region_counts[region] = 0
             continue
-        vsis = get_vsis_in_region(region, args.v)
+        vsis = get_vsis_in_region(region)
         region_counts[region] = len(vsis)
         if args.v:
-            print(f"{BOLD}[DEBUG]{RESET} Region {region}: Found {len(vsis)} VSI(s)")
+            line = f"{BOLD}[DEBUG]{RESET} Region: {region} — {len(vsis)} VSI(s) found"
+            if args.d:
+                line += f" — {CYAN}ibmcloud is instances --output json{RESET}"
+            print(line)
         all_vsis.extend(vsis)
+
+    if not args.v:
+        print()  # newline after the final \r progress line
 
     total = len(all_vsis)
     metadata_enabled = [v for v in all_vsis if v.get("metadata_enabled")]

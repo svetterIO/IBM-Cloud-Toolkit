@@ -18,7 +18,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from utils import (
-    BOLD, ORANGE, RESET, SEPARATOR, YELLOW,
+    BOLD, CYAN, ORANGE, RESET, SEPARATOR, YELLOW,
     _ibmcloud, ensure_output_dir, print_console_link,
     require_ibmcloud_login, require_ibmcloud_schematics, warning,
 )
@@ -36,7 +36,8 @@ def parse_args(argv=None):
     p.add_argument("-r", metavar="REGIONS", default=DEFAULT_REGIONS,
                    help="Space or comma-separated regions "
                         "(default: 'us-south eu-de ca-tor')")
-    p.add_argument("-v", action="store_true")
+    p.add_argument("-v", action="store_true", help="Verbose: show region and workspace count per region")
+    p.add_argument("-d", action="store_true", help="Full debug: also show ibmcloud command per region; requires -v")
     return p.parse_args(argv)
 
 
@@ -45,9 +46,7 @@ def target_region(region: str) -> bool:
     return result.returncode == 0
 
 
-def list_workspaces(region: str, debug: bool) -> list[dict]:
-    if debug:
-        print(f"{BOLD}[DEBUG]{RESET} Running: ibmcloud schematics workspace list --output json")
+def list_workspaces(region: str) -> list[dict]:
     result = _ibmcloud("schematics", "workspace", "list", "--output", "json")
     if result.returncode != 0 or not result.stdout.strip():
         return []
@@ -60,6 +59,10 @@ def list_workspaces(region: str, debug: bool) -> list[dict]:
 
 def main(argv=None):
     args = parse_args(argv)
+
+    if args.d and not args.v:
+        print("Error: -d flag requires -v flag to be set", file=sys.stderr)
+        sys.exit(1)
 
     require_ibmcloud_login()
     require_ibmcloud_schematics()
@@ -75,23 +78,29 @@ def main(argv=None):
     print(" ")
 
     if args.v:
-        print(f"{BOLD}[DEBUG]{RESET} Processing Schematics regions: {' '.join(regions)}")
+        print(f"{BOLD}[DEBUG]{RESET} Regions: {' '.join(regions)}")
 
     all_workspaces: list[dict] = []
     region_counts: dict[str, int] = {}
 
-    for region in regions:
-        if args.v:
-            print(f"{BOLD}[DEBUG]{RESET} Processing region: {region}")
+    for i, region in enumerate(regions, 1):
+        if not args.v:
+            print(f"\rScanning region {i}/{len(regions)}: {region:<20}", end="", flush=True)
         if not target_region(region):
             warning(f"Failed to target region {region}")
             region_counts[region] = 0
             continue
-        ws = list_workspaces(region, args.v)
+        ws = list_workspaces(region)
         region_counts[region] = len(ws)
         if args.v:
-            print(f"{BOLD}[DEBUG]{RESET} Region {region}: Found {len(ws)} workspace(s)")
+            line = f"{BOLD}[DEBUG]{RESET} Region: {region} — {len(ws)} workspace(s) found"
+            if args.d:
+                line += f" — {CYAN}ibmcloud schematics workspace list --output json{RESET}"
+            print(line)
         all_workspaces.extend(ws)
+
+    if not args.v:
+        print()  # newline after the final \r progress line
 
     total = len(all_workspaces)
     print(f"{BOLD}Total workspaces found: {total}{RESET}")

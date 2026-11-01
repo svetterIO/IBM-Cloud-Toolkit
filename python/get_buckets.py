@@ -18,7 +18,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from utils import (
-    BOLD, ORANGE, RESET, SEPARATOR,
+    BOLD, CYAN, ORANGE, RESET, SEPARATOR,
     _ibmcloud, ensure_output_dir, failure, print_console_link,
     require_ibmcloud_cos, require_ibmcloud_login,
 )
@@ -31,7 +31,8 @@ def parse_args(argv=None):
     )
     p.add_argument("-o", metavar="OUTPUT_DIR", default="reports")
     p.add_argument("-f", metavar="OUTPUT_FILE", default="buckets.json")
-    p.add_argument("-v", action="store_true")
+    p.add_argument("-v", action="store_true", help="Verbose: show instance name and bucket count per instance")
+    p.add_argument("-d", action="store_true", help="Full debug: also show ibmcloud command per instance; requires -v")
     return p.parse_args(argv)
 
 
@@ -55,9 +56,7 @@ def get_cos_instances(debug: bool) -> list[dict]:
     return []
 
 
-def get_buckets_for_instance(crn: str, debug: bool) -> list[dict]:
-    if debug:
-        print(f"{BOLD}[DEBUG]{RESET} Running: ibmcloud cos buckets --ibm-service-instance-id {crn} --output json")
+def get_buckets_for_instance(crn: str) -> list[dict]:
     result = _ibmcloud("cos", "buckets", "--ibm-service-instance-id", crn, "--output", "json")
     if result.returncode != 0:
         return []
@@ -72,6 +71,10 @@ def get_buckets_for_instance(crn: str, debug: bool) -> list[dict]:
 def main(argv=None):
     args = parse_args(argv)
 
+    if args.d and not args.v:
+        print("Error: -d flag requires -v flag to be set", file=sys.stderr)
+        sys.exit(1)
+
     require_ibmcloud_login()
     require_ibmcloud_cos()
     out_dir = ensure_output_dir(args.o)
@@ -84,15 +87,22 @@ def main(argv=None):
 
     instances = get_cos_instances(args.v)
     all_buckets: list[dict] = []
+    num_instances = len(instances)
 
-    for instance in instances:
+    for i, instance in enumerate(instances, 1):
         inst_name = instance.get("name", "")
         inst_crn = instance.get("crn", "")
         region_id = instance.get("region_id", "")
 
-        buckets = get_buckets_for_instance(inst_crn, args.v)
+        if not args.v:
+            print(f"\rScanning instance {i}/{num_instances}: {inst_name[:40]:<40}", end="", flush=True)
+
+        buckets = get_buckets_for_instance(inst_crn)
         if args.v:
-            print(f"{BOLD}[DEBUG]{RESET} Found {len(buckets)} bucket(s) in instance {inst_name}")
+            line = f"{BOLD}[DEBUG]{RESET} Instance {inst_name}: {len(buckets)} bucket(s) found"
+            if args.d:
+                line += f" — {CYAN}ibmcloud cos buckets --ibm-service-instance-id {inst_crn} --output json{RESET}"
+            print(line)
 
         for b in buckets:
             all_buckets.append({
@@ -102,6 +112,9 @@ def main(argv=None):
                 "region_id": region_id,
                 "CreationDate": b.get("CreationDate"),
             })
+
+    if not args.v:
+        print()  # newline after the final \r progress line
 
     total = len(all_buckets)
     if total == 0:
