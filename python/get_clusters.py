@@ -20,7 +20,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from utils import (
-    BOLD, ORANGE, RESET, SEPARATOR,
+    BOLD, ORANGE, RESET, SEPARATOR, YELLOW,
     ensure_output_dir, failure, ibmcloud_access_token,
     ibmcloud_get, print_console_link, require_ibmcloud_login,
 )
@@ -92,17 +92,40 @@ def main(argv=None):
     ]
 
     total = len(clusters)
+    public = [c for c in clusters if c.get("publicServiceEndpointEnabled")]
+
+    # ── Per-cluster summary ───────────────────────────────────────────────────
+    print()
+    print(f"{BOLD}Cluster summary:{RESET}")
+    by_region: dict[str, list[dict]] = {}
+    for c in clusters:
+        by_region.setdefault(c.get("region") or "unknown", []).append(c)
+    for region, region_clusters in sorted(by_region.items()):
+        print(f"  {BOLD}{region}{RESET} — {len(region_clusters)} cluster(s)")
+        for c in region_clusters:
+            pub_flag = f" {YELLOW}[public endpoint]{RESET}" if c.get("publicServiceEndpointEnabled") else ""
+            print(f"    - {c['name']} ({c.get('type', '?')} {c.get('masterKubeVersion', '?')}){pub_flag}")
+
+    # ── Statistics ────────────────────────────────────────────────────────────
+    print()
+    print(f"{BOLD}Statistics:{RESET}")
+    print(f"  Total clusters:          {BOLD}{total}{RESET}")
+    print(f"  With public endpoint:    {BOLD}{len(public)}{RESET}")
+
+    by_type: dict[str, int] = {}
+    for c in clusters:
+        by_type[c.get("type") or "unknown"] = by_type.get(c.get("type") or "unknown", 0) + 1
+    for t, count in sorted(by_type.items()):
+        print(f"  {t}: {BOLD}{count}{RESET}")
+
+    # ── Output files ──────────────────────────────────────────────────────────
+    print()
     output_path.write_text(json.dumps(clusters, indent=2), encoding="utf-8")
-    print(f"{BOLD}Total clusters found: {total}{RESET}")
     print(f"All clusters saved to: {BOLD}{output_path}{RESET}")
 
-    public = [c for c in clusters if c.get("publicServiceEndpointEnabled")]
     if public:
         public_path.write_text(json.dumps(public, indent=2), encoding="utf-8")
-        print(f"{BOLD}Clusters with public endpoint: {len(public)}{RESET}")
         print(f"Clusters with public endpoint saved to: {BOLD}{public_path}{RESET}")
-    else:
-        print(f"{BOLD}Clusters with public endpoint: 0{RESET}")
     print()
     print_console_link("Manage Kubernetes / OpenShift clusters", "https://cloud.ibm.com/kubernetes/clusters")
 
