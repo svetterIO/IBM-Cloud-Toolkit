@@ -184,6 +184,9 @@ select:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
 .acc-2 > .acc-body { padding: 0 16px 16px 44px; }
 .acc-note { margin: 0 0 12px; max-width: 800px; }
 .script-tag { font-family: var(--mono); font-size: 12px; color: var(--text-2); }
+.cmd-bar { display: flex; align-items: center; gap: 8px; margin: 0 16px 12px; padding: 8px 12px; background: var(--field); border-left: 3px solid var(--border); }
+.cmd-bar code { flex: 1; font-family: var(--mono); font-size: 13px; color: var(--text); }
+.cmd-bar .icon-btn { flex: none; }
 .tag {
   display: inline-flex; align-items: center; height: 24px; padding: 0 8px; border-radius: 24px;
   background: var(--layer-accent); color: var(--text); font-size: 12px; letter-spacing: .32px; white-space: nowrap;
@@ -317,6 +320,7 @@ tbody tr:hover td { background: var(--layer-hover); }
 .empty-state { padding: 48px 16px; text-align: center; }
 .empty-state h2 { margin: 0 0 8px; font-size: 20px; line-height: 28px; font-weight: 400; }
 .empty-state p { margin: 0 auto; max-width: 560px; color: var(--text-2); }
+.acc-toolbar { display: flex; gap: 8px; margin-bottom: 12px; }
 body.dragging::after {
   content: "Drop the reports folder to load it"; position: fixed; inset: 0; z-index: 60; display: grid; place-items: center;
   background: rgba(15, 98, 254, .12); border: 2px dashed var(--primary); color: var(--drag-text); font-size: 20px; pointer-events: none;
@@ -361,6 +365,10 @@ body.dragging::after {
   </section>
 
   <noscript><div class="notif error"><div><strong>JavaScript is required</strong><p>This report is rendered in your browser.</p></div></div></noscript>
+  <div class="acc-toolbar" id="accToolbar" hidden>
+    <button class="btn secondary" id="collapseAll" type="button">Collapse all</button>
+    <button class="btn secondary" id="expandAll"   type="button">Expand all</button>
+  </div>
   <div id="modules"></div>
 </main>
 <div class="toasts" id="toasts" aria-live="polite"></div>
@@ -414,6 +422,72 @@ function withServiceKeyInfo(row) {
     exposed: row.apikey ? 'Yes' : 'No',
   };
 }
+
+const USER_COLUMNS = [
+  { key: 'email',         label: 'Email' },
+  { key: 'iam_id',        label: 'IAM ID', mono: true },
+  { key: 'user_id',       label: 'User ID', mono: true },
+  { key: 'state',         label: 'State', tag: true, tagClass: t => (t === 'ACTIVE' ? 'green' : t === 'VPN_ONLY' ? 'blue' : 'red') },
+  { key: 'last_authn',    label: 'Last authentication', mono: true },
+  { key: 'authn_count',   label: 'Auth count', mono: true },
+];
+
+function withUserInfo(row) {
+  const act = row.last_activity;
+  const last_authn  = act && typeof act === 'object' ? (act.last_authn  || '—') : (act || '—');
+  const authn_count = act && typeof act === 'object' ? (act.authn_count != null ? String(act.authn_count) : '—') : '—';
+  return { ...row, last_authn, authn_count };
+}
+
+/* ── MFA / Account settings (get_mfa) ───────────────────────────────────── */
+const MFA_LEVEL_LABEL = {
+  'NONE':          'None',
+  'NONE_NO_ROPC':  'None (no ROPC)',
+  'TOTP':          'TOTP (IBMid only)',
+  'TOTP4ALL':      'TOTP (all users)',
+  'LEVEL1':        'Level 1',
+  'LEVEL2':        'Level 2',
+  'LEVEL3':        'Level 3 (hardware key)',
+};
+
+function withMfaAccountInfo(row) {
+  const raw = row.mfa || 'NONE';
+  const mfa_label = MFA_LEVEL_LABEL[raw] || raw;
+  const mfa_ok    = raw === 'TOTP4ALL' || raw.startsWith('LEVEL');
+  return {
+    ...row,
+    mfa_label,
+    mfa_status: mfa_ok ? 'Enforced' : 'Not enforced',
+    user_mfa_count: Array.isArray(row.user_mfa) ? String(row.user_mfa.length) : '0',
+    allowed_ip_addresses: row.allowed_ip_addresses || '—',
+  };
+}
+
+function withMfaUserInfo(row) {
+  const raw = row.mfa || '';
+  return { ...row, mfa_label: MFA_LEVEL_LABEL[raw] || raw || '—' };
+}
+
+const MFA_ACCOUNT_COLUMNS = [
+  { key: 'account_id',                          label: 'Account ID', mono: true },
+  { key: 'mfa_label',                           label: 'MFA setting', tag: true,
+    tagClass: t => (t.startsWith('None') ? 'red' : t.startsWith('TOTP (all') || t.startsWith('Level') ? 'green' : 'blue') },
+  { key: 'mfa_status',                          label: 'Status', tag: true,
+    tagClass: t => (t === 'Enforced' ? 'green' : 'red') },
+  { key: 'user_mfa_count',                      label: 'Per-user overrides' },
+  { key: 'restrict_create_service_id',          label: 'Restrict Service ID creation' },
+  { key: 'restrict_create_platform_apikey',     label: 'Restrict API key creation' },
+  { key: 'restrict_user_list_visibility',       label: 'User list visibility' },
+  { key: 'allowed_ip_addresses',               label: 'Allowed IP ranges' },
+  { key: 'session_expiration_in_seconds',       label: 'Session expiry (s)' },
+  { key: 'max_sessions_per_identity',           label: 'Max sessions per identity' },
+];
+
+const MFA_USER_COLUMNS = [
+  { key: 'iam_id',    label: 'IAM ID', mono: true },
+  { key: 'mfa_label', label: 'MFA override', tag: true,
+    tagClass: t => (!t || t === '—' ? '' : t.startsWith('None') ? 'red' : 'blue') },
+];
 
 const CUSTOM_ROLE_COLUMNS = [
   { key: 'display_name',       label: 'Display name' },
@@ -515,6 +589,407 @@ const MODULES = [
         prepare: withCustomRoleInfo,
         unique: { key: 'crn', noun: 'role CRNs' },
         missing: 'custom_roles.txt was not found in this run. Run get_custom_roles (or the full runner) to generate it.',
+      },
+    ],
+  },
+  {
+    id: 'users',
+    title: 'Users',
+    script: 'get_users',
+    sections: [
+      {
+        id: 'all',
+        title: 'All users',
+        file: 'users.txt',
+        columns: USER_COLUMNS,
+        prepare: withUserInfo,
+        unique: { key: 'iam_id', noun: 'users' },
+        missing: 'users.txt was not found in this run. Run get_users (or the full runner) to generate it.',
+      },
+      {
+        id: 'inactive',
+        title: 'Inactive users',
+        note: 'Users whose state is neither ACTIVE nor VPN_ONLY.',
+        file: 'inactive_users.txt',
+        columns: USER_COLUMNS,
+        prepare: withUserInfo,
+        unique: { key: 'iam_id', noun: 'inactive users' },
+        missing: 'inactive_users.txt was not found. get_users only writes this file when at least one inactive user is found, ' +
+                 'so there may be none (or the module was not run).',
+      },
+    ],
+  },
+  {
+    id: 'user-policies',
+    title: 'User direct policies',
+    script: 'get_user_policies',
+    sections: [
+      {
+        id: 'all',
+        title: 'Users with direct access policies',
+        note: 'Each row is one IAM policy assigned directly to a user (not via an access group).',
+        file: 'user_policies.txt',
+        columns: [
+          { key: 'user_id',   label: 'User ID' },
+          { key: 'iam_id',    label: 'IAM ID', mono: true },
+          { key: 'policy_id', label: 'Policy ID', mono: true },
+          { key: 'type',      label: 'Type', tag: true },
+          { key: 'state',     label: 'State', tag: true, tagClass: t => (t === 'active' ? 'green' : t === 'deleted' ? 'red' : '') },
+          { key: 'roles',     label: 'Roles' },
+          { key: 'resources', label: 'Resources' },
+        ],
+        unique: { key: 'policy_id', noun: 'policy IDs' },
+        missing: 'user_policies.txt was not found in this run. Run get_user_policies (or the full runner) to generate it.',
+      },
+    ],
+  },
+  {
+    id: 'mfa',
+    title: 'MFA / Account settings',
+    script: 'get_mfa',
+    sections: [
+      {
+        id: 'account',
+        title: 'Account identity settings',
+        note: 'MFA status and account-wide IAM policy settings. A green "Enforced" status means TOTP4ALL or higher is set.',
+        file: 'account_settings.json',
+        fromObject: true,
+        columns: MFA_ACCOUNT_COLUMNS,
+        prepare: withMfaAccountInfo,
+        missing: 'account_settings.json was not found in this run. Run get_mfa (or the full runner) to generate it.',
+      },
+      {
+        id: 'user-overrides',
+        title: 'Per-user MFA overrides',
+        note: 'Users with an MFA setting that differs from the account default. An empty table means no per-user overrides are configured.',
+        file: 'account_settings.json',
+        fromObject: true,
+        fromObjectKey: 'user_mfa',
+        columns: MFA_USER_COLUMNS,
+        prepare: withMfaUserInfo,
+        missing: 'account_settings.json was not found in this run. Run get_mfa (or the full runner) to generate it.',
+      },
+    ],
+  },
+  {
+    id: 'regions',
+    title: 'Regions',
+    script: 'get_regions',
+    sections: [
+      {
+        id: 'all',
+        title: 'Active regions',
+        note: 'IBM Cloud regions enabled in this account. Each active region may host resources enumerated in subsequent modules.',
+        file: 'regions.txt',
+        fromLines: true,
+        columns: [{ key: 'name', label: 'Region', mono: true }],
+        unique: { key: 'name', noun: 'regions' },
+        missing: 'regions.txt was not found in this run. Run get_regions (or the full runner) to generate it.',
+      },
+    ],
+  },
+  {
+    id: 'floating-ips',
+    title: 'Floating IPs',
+    script: 'get_floating_IPs',
+    sections: [
+      {
+        id: 'all',
+        title: 'All floating IPs',
+        note: 'Publicly routable IPv4 addresses allocated in the account across all regions. Correlate with security group findings for exposure assessment.',
+        file: 'floating_ips.txt',
+        fromLines: true,
+        columns: [{ key: 'name', label: 'IP address', mono: true }],
+        unique: { key: 'name', noun: 'floating IPs' },
+        missing: 'floating_ips.txt was not found in this run. Run get_floating_IPs (or the full runner) to generate it.',
+      },
+    ],
+  },
+  {
+    id: 'vsis',
+    title: 'VSIs',
+    script: 'get_VSIs',
+    sections: [
+      {
+        id: 'all',
+        title: 'All Virtual Server Instances',
+        file: 'VSIs.json',
+        columns: [
+          { key: 'name',             label: 'Name' },
+          { key: 'id',               label: 'ID', mono: true },
+          { key: 'region',           label: 'Region', mono: true },
+          { key: 'image',            label: 'Image' },
+          { key: 'metadata_status',  label: 'Metadata service', tag: true,
+            tagClass: t => (t === 'Enabled' ? 'red' : t === 'Disabled' ? 'green' : '') },
+          { key: 'floating_IPs',     label: 'Floating IPs', mono: true },
+          { key: 'security_groups',  label: 'Security groups' },
+        ],
+        prepare: r => ({ ...r, metadata_status: r.metadata_enabled ? 'Enabled' : 'Disabled' }),
+        unique: { key: 'id', noun: 'VSI IDs' },
+        missing: 'VSIs.json was not found in this run. Run get_VSIs (or the full runner) to generate it.',
+      },
+      {
+        id: 'metadata-enabled',
+        title: 'VSIs with metadata service enabled',
+        note: 'The instance metadata service exposes IAM credentials to any process on the VSI. See OBS-07.',
+        file: 'metadata_enabled_VSIs.json',
+        columns: [
+          { key: 'name',            label: 'Name' },
+          { key: 'id',              label: 'ID', mono: true },
+          { key: 'region',          label: 'Region', mono: true },
+          { key: 'image',           label: 'Image' },
+          { key: 'floating_IPs',    label: 'Floating IPs', mono: true },
+          { key: 'security_groups', label: 'Security groups' },
+        ],
+        unique: { key: 'id', noun: 'VSI IDs' },
+        missing: 'metadata_enabled_VSIs.json was not found. get_VSIs only writes this file when at least one VSI has the metadata service enabled, so there may be none (or the module was not run).',
+      },
+    ],
+  },
+  {
+    id: 'clusters',
+    title: 'Clusters',
+    script: 'get_clusters',
+    sections: [
+      {
+        id: 'all',
+        title: 'All Kubernetes / OpenShift clusters',
+        file: 'clusters.json',
+        columns: [
+          { key: 'name',                        label: 'Name' },
+          { key: 'region',                      label: 'Region', mono: true },
+          { key: 'type',                        label: 'Type', tag: true },
+          { key: 'masterKubeVersion',           label: 'Version', mono: true },
+          { key: 'public_endpoint',             label: 'Public endpoint', tag: true,
+            tagClass: t => (t === 'Yes' ? 'red' : t === 'No' ? 'green' : '') },
+          { key: 'publicServiceEndpointURL',    label: 'Endpoint URL', mono: true },
+          { key: 'ingress',                     label: 'Ingress hostname', mono: true },
+        ],
+        prepare: r => ({ ...r, public_endpoint: r.publicServiceEndpointEnabled ? 'Yes' : 'No' }),
+        unique: { key: 'name', noun: 'cluster names' },
+        missing: 'clusters.json was not found in this run. Run get_clusters (or the full runner) to generate it.',
+      },
+      {
+        id: 'public-endpoint',
+        title: 'Clusters with public endpoint enabled',
+        note: 'The Kubernetes / OpenShift API server is reachable from the internet on these clusters.',
+        file: 'public_endpoint_clusters.json',
+        columns: [
+          { key: 'name',                     label: 'Name' },
+          { key: 'region',                   label: 'Region', mono: true },
+          { key: 'type',                     label: 'Type', tag: true },
+          { key: 'masterKubeVersion',        label: 'Version', mono: true },
+          { key: 'publicServiceEndpointURL', label: 'Endpoint URL', mono: true },
+          { key: 'ingress',                  label: 'Ingress hostname', mono: true },
+        ],
+        unique: { key: 'name', noun: 'cluster names' },
+        missing: 'public_endpoint_clusters.json was not found. get_clusters only writes this file when at least one cluster has a public endpoint enabled, so there may be none (or the module was not run).',
+      },
+    ],
+  },
+  {
+    id: 'databases',
+    title: 'Databases',
+    script: 'get_databases',
+    sections: [
+      {
+        id: 'all',
+        title: 'All databases',
+        note: 'Combined inventory of Cloud Databases (cdb), DB2, and Cloudant instances. The db_service field identifies the source.',
+        file: 'databases.json',
+        columns: [
+          { key: 'name',       label: 'Name' },
+          { key: 'db_service', label: 'Service', tag: true },
+          { key: 'type',       label: 'Type', mono: true },
+          { key: 'id',         label: 'ID / GUID', mono: true },
+          { key: 'crn',        label: 'CRN', mono: true },
+        ],
+        prepare: r => ({ ...r, id: r.id || r.guid || '' }),
+        unique: { key: 'crn', noun: 'database CRNs' },
+        missing: 'databases.json was not found in this run. Run get_databases (or the full runner) to generate it.',
+      },
+      {
+        id: 'public-endpoint',
+        title: 'Databases with public endpoint',
+        note: 'Databases reachable from the internet. The public_endpoints field lists host:port pairs.',
+        file: 'public_endpoint_databases.json',
+        columns: [
+          { key: 'name',             label: 'Name' },
+          { key: 'db_service',       label: 'Service', tag: true },
+          { key: 'service_endpoints',label: 'Endpoint type', tag: true,
+            tagClass: t => (t === 'private' ? 'green' : t === 'public' ? 'red' : 'blue') },
+          { key: 'endpoints_text',   label: 'Public endpoints', mono: true },
+          { key: 'crn',              label: 'CRN', mono: true },
+        ],
+        prepare: r => ({ ...r, endpoints_text: Array.isArray(r.public_endpoints) ? r.public_endpoints.join(', ') : (r.public_endpoints || '') }),
+        unique: { key: 'crn', noun: 'database CRNs' },
+        missing: 'public_endpoint_databases.json was not found. get_databases only writes this file when at least one database has a public endpoint, so there may be none (or the module was not run).',
+      },
+    ],
+  },
+  {
+    id: 'schematics',
+    title: 'Schematics workspaces',
+    script: 'get_schematics',
+    sections: [
+      {
+        id: 'all',
+        title: 'All Schematics workspaces',
+        note: 'Schematics workspaces may contain secrets in Terraform variables. Review variable values for exposed credentials.',
+        file: 'schematics_workspaces.json',
+        columns: [
+          { key: 'name',           label: 'Name' },
+          { key: 'id',             label: 'ID', mono: true },
+          { key: 'location',       label: 'Region', mono: true },
+          { key: 'resource_group', label: 'Resource group' },
+          { key: 'type_text',      label: 'Type', mono: true },
+          { key: 'status',         label: 'Status', tag: true },
+          { key: 'created_at',     label: 'Created at', mono: true, date: true },
+          { key: 'updated_at',     label: 'Updated at', mono: true },
+        ],
+        prepare: r => ({ ...r, type_text: Array.isArray(r.type) ? r.type.join(', ') : (r.type || '') }),
+        unique: { key: 'id', noun: 'workspace IDs' },
+        missing: 'schematics_workspaces.json was not found in this run. Run get_schematics (or the full runner) to generate it.',
+      },
+    ],
+  },
+  {
+    id: 'security-groups',
+    title: 'Security groups',
+    script: 'get_security_groups',
+    sections: [
+      {
+        id: 'vpc-all',
+        title: 'All VPC security groups',
+        file: 'security_groups.json',
+        columns: [
+          { key: 'name',         label: 'Name' },
+          { key: 'id',           label: 'ID', mono: true },
+          { key: 'region',       label: 'Region', mono: true },
+          { key: 'rule_count',   label: 'Rules', mono: true },
+          { key: 'unrestricted', label: 'Unrestricted inbound', tag: true,
+            tagClass: t => (t === 'Yes' ? 'red' : t === 'No' ? 'green' : '') },
+        ],
+        prepare: r => ({
+          ...r,
+          rule_count: String((r.rules || []).length),
+          unrestricted: (r.rules || []).some(rule =>
+            rule.direction === 'inbound' && (rule.remote || {}).cidr_block === '0.0.0.0/0'
+          ) ? 'Yes' : 'No',
+        }),
+        unique: { key: 'id', noun: 'security group IDs' },
+        missing: 'security_groups.json was not found in this run. Run get_security_groups (or the full runner) to generate it.',
+      },
+      {
+        id: 'vpc-unrestricted',
+        title: 'VPC security groups with unrestricted inbound (0.0.0.0/0)',
+        note: 'These security groups allow inbound traffic from any source. Correlate with floating IPs and load balancers for exposure assessment.',
+        file: 'security_groups_unrestricted.json',
+        columns: [
+          { key: 'name',       label: 'Name' },
+          { key: 'id',         label: 'ID', mono: true },
+          { key: 'region',     label: 'Region', mono: true },
+          { key: 'rule_count', label: 'Rules', mono: true },
+        ],
+        prepare: r => ({ ...r, rule_count: String((r.rules || []).length) }),
+        unique: { key: 'id', noun: 'security group IDs' },
+        missing: 'security_groups_unrestricted.json was not found. get_security_groups only writes this file when at least one unrestricted group is found, so there may be none (or the module was not run).',
+      },
+      {
+        id: 'classic',
+        title: 'Classic Infrastructure security groups',
+        file: 'security_groups_classic.json',
+        columns: [
+          { key: 'name',        label: 'Name' },
+          { key: 'id',          label: 'ID', mono: true },
+          { key: 'description', label: 'Description' },
+        ],
+        unique: { key: 'id', noun: 'security group IDs' },
+        missing: 'security_groups_classic.json was not found. Classic Infrastructure may not be enabled on this account, or the module was not run.',
+      },
+    ],
+  },
+  {
+    id: 'load-balancers',
+    title: 'Load balancers',
+    script: 'get_load_balancers',
+    sections: [
+      {
+        id: 'all',
+        title: 'All VPC load balancers',
+        file: 'load_balancers.json',
+        columns: [
+          { key: 'name',                label: 'Name' },
+          { key: 'region',              label: 'Region', mono: true },
+          { key: 'is_public_text',      label: 'Type', tag: true,
+            tagClass: t => (t === 'Public' ? 'red' : t === 'Private' ? 'green' : '') },
+          { key: 'operating_status',    label: 'Status', tag: true },
+          { key: 'hostname',            label: 'Hostname', mono: true },
+          { key: 'public_ips_text',     label: 'Public IPs', mono: true },
+          { key: 'security_groups_text',label: 'Security groups' },
+          { key: 'listeners_text',      label: 'Listeners', mono: true },
+          { key: 'vpc',                 label: 'VPC' },
+        ],
+        prepare: r => ({
+          ...r,
+          is_public_text:       r.is_public ? 'Public' : 'Private',
+          public_ips_text:      Array.isArray(r.public_ips) ? r.public_ips.join(', ') : '',
+          security_groups_text: Array.isArray(r.security_groups) ? r.security_groups.join(', ') : '',
+          listeners_text:       Array.isArray(r.listeners)
+            ? r.listeners.map(l => `${l.protocol}:${l.port}`).join(', ')
+            : '',
+        }),
+        unique: { key: 'id', noun: 'load balancer IDs' },
+        missing: 'load_balancers.json was not found in this run. Run get_load_balancers (or the full runner) to generate it.',
+      },
+      {
+        id: 'public',
+        title: 'Public load balancers',
+        note: 'These load balancers are internet-facing. Correlate with security group findings for exposure assessment.',
+        file: 'public_load_balancers.json',
+        columns: [
+          { key: 'name',                  label: 'Name' },
+          { key: 'region',                label: 'Region', mono: true },
+          { key: 'operating_status',      label: 'Status', tag: true },
+          { key: 'hostname',              label: 'Hostname', mono: true },
+          { key: 'public_endpoints_text', label: 'Public endpoints', mono: true },
+          { key: 'public_ips_text',       label: 'Public IPs', mono: true },
+          { key: 'security_groups_text',  label: 'Security groups' },
+          { key: 'listeners_text',        label: 'Listeners', mono: true },
+        ],
+        prepare: r => ({
+          ...r,
+          public_ips_text:       Array.isArray(r.public_ips) ? r.public_ips.join(', ') : '',
+          public_endpoints_text: Array.isArray(r.public_endpoints) ? r.public_endpoints.join(', ') : '',
+          security_groups_text:  Array.isArray(r.security_groups) ? r.security_groups.join(', ') : '',
+          listeners_text:        Array.isArray(r.listeners)
+            ? r.listeners.map(l => `${l.protocol}:${l.port}`).join(', ')
+            : '',
+        }),
+        unique: { key: 'id', noun: 'load balancer IDs' },
+        missing: 'public_load_balancers.json was not found. get_load_balancers only writes this file when at least one public load balancer is found, so there may be none (or the module was not run).',
+      },
+    ],
+  },
+  {
+    id: 'buckets',
+    title: 'Object Storage buckets',
+    script: 'get_buckets',
+    sections: [
+      {
+        id: 'all',
+        title: 'All Object Storage buckets',
+        note: 'Buckets across all COS instances in the account. Use get_buckets_files to enumerate object keys within each bucket.',
+        file: 'buckets.json',
+        columns: [
+          { key: 'bucket_name',            label: 'Bucket name', mono: true },
+          { key: 'service_instance_name',  label: 'COS instance' },
+          { key: 'region_id',              label: 'Region', mono: true },
+          { key: 'CreationDate',           label: 'Created at', mono: true, date: true },
+          { key: 'service_instance_crn',   label: 'Instance CRN', mono: true },
+        ],
+        unique: { key: 'bucket_name', noun: 'bucket names' },
+        missing: 'buckets.json was not found in this run. Run get_buckets (or the full runner) to generate it.',
       },
     ],
   },
@@ -1055,9 +1530,35 @@ async function loadSection(run, section) {
   const file = run.files.get(section.file);
   if (!file) return { status: 'missing' };
   try {
-    const parsed = JSON.parse(await file.text());
-    if (!Array.isArray(parsed)) return { status: 'error', message: `${section.file} does not contain a JSON array.` };
-    const rows = parsed.filter(r => r && typeof r === 'object');
+    const text = await file.text();
+    let rows;
+    // Try standard JSON first (array or single object).
+    // Fall back to NDJSON (one JSON value per non-empty line) when that fails.
+    try {
+      const parsed = JSON.parse(text);
+      if (section.fromObject) {
+        // Single-object file: wrap into a one-element array (or extract a nested array via fromObjectKey).
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed))
+          return { status: 'error', message: `${section.file} does not contain a JSON object.` };
+        rows = section.fromObjectKey
+          ? (Array.isArray(parsed[section.fromObjectKey]) ? parsed[section.fromObjectKey].filter(r => r && typeof r === 'object') : [])
+          : [parsed];
+      } else {
+        if (!Array.isArray(parsed)) return { status: 'error', message: `${section.file} does not contain a JSON array.` };
+        rows = parsed.filter(r => r && typeof r === 'object');
+      }
+    } catch (_) {
+      if (section.fromLines) {
+        // Plain-text file: one value per non-empty line, wrapped into { name } objects.
+        rows = text.split('\n').map(l => l.trim()).filter(Boolean).map(name => ({ name }));
+      } else {
+        const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+        rows = lines.map((line, i) => {
+          try { return JSON.parse(line); }
+          catch (e) { throw new SyntaxError(`Line ${i + 1}: ${e.message}`); }
+        }).filter(r => r && typeof r === 'object');
+      }
+    }
     return { status: 'ok', rows: section.prepare ? rows.map(section.prepare) : rows };
   } catch (err) {
     return { status: 'error', message: `${section.file} could not be parsed: ${err.message}` };
@@ -1088,7 +1589,21 @@ function buildSection(section, result) {
 }
 
 const modulesEl = document.getElementById('modules');
+const accToolbar = document.getElementById('accToolbar');
 let renderToken = 0;
+
+document.getElementById('collapseAll').addEventListener('click', () => {
+  modulesEl.querySelectorAll('.acc-btn[aria-expanded="true"]').forEach(btn => {
+    btn.setAttribute('aria-expanded', 'false');
+    document.getElementById(btn.getAttribute('aria-controls')).hidden = true;
+  });
+});
+document.getElementById('expandAll').addEventListener('click', () => {
+  modulesEl.querySelectorAll('.acc-btn[aria-expanded="false"]').forEach(btn => {
+    btn.setAttribute('aria-expanded', 'true');
+    document.getElementById(btn.getAttribute('aria-controls')).hidden = false;
+  });
+});
 
 async function renderRun(run) {
   const token = ++renderToken;
@@ -1098,9 +1613,15 @@ async function renderRun(run) {
     built.push({ mod, sections: mod.sections.map((s, i) => buildSection(s, results[i])) });
   }
   if (token !== renderToken) return; // a newer run was selected meanwhile
-  modulesEl.replaceChildren(...built.map(({ mod, sections }) =>
-    el('div', { class: 'module' },
-      collapsible({ level: 1, title: mod.title, script: mod.script, open: true, content: sections }))));
+  modulesEl.replaceChildren(...built.map(({ mod, sections }) => {
+    const cmd = `python python/ibm_cloud_enum.py ${mod.script}`;
+    const copyBtn = el('button', { class: 'icon-btn', type: 'button', title: 'Copy command', 'aria-label': 'Copy command' }, icon('copy'));
+    copyBtn.addEventListener('click', () => copyPayload({ text: cmd }).then(ok => ok && toast('Command copied')));
+    const cmdBar = el('div', { class: 'cmd-bar' }, el('code', null, cmd), copyBtn);
+    return el('div', { class: 'module' },
+      collapsible({ level: 1, title: mod.title, script: mod.script, open: true, content: [cmdBar, ...sections] }));
+  }));
+  accToolbar.hidden = false;
 }
 
 const runSelect = document.getElementById('runSelect');
@@ -1108,6 +1629,7 @@ const runMeta = document.getElementById('runMeta');
 let currentRuns = [];
 
 function showEmptyState() {
+  accToolbar.hidden = true;
   modulesEl.replaceChildren(el('div', { class: 'tile empty-state' },
     el('h2', null, 'No data loaded'),
     el('p', null, 'Select the reports/ folder (or a single report_YYYYMMDD_HHMMSS folder) to see the results here.')));
