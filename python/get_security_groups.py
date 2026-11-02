@@ -87,13 +87,49 @@ def get_sg_targets(sg_id: str, region: str, show_cmd: bool) -> list[dict]:
     ]
 
 
+def unrestricted_rules(sg: dict) -> list[dict]:
+    return [
+        rule for rule in sg.get("rules") or []
+        if rule.get("direction") == "inbound"
+        and (rule.get("remote") or {}).get("cidr_block") == "0.0.0.0/0"
+    ]
+
+
+def print_targets(sg: dict, indent: str) -> None:
+    for t in sg.get("targets") or []:
+        print(f"{indent}{CYAN}> {t.get('name') or t.get('id')} ({t.get('resource_type')}){RESET}")
+
+
 def is_unrestricted(sg: dict) -> bool:
-    for rule in sg.get("rules") or []:
-        if (
-            rule.get("direction") == "inbound"
-            and (rule.get("remote") or {}).get("cidr_block") == "0.0.0.0/0"
-        ):
-            return True
+    return bool(unrestricted_rules(sg))
+
+
+def describe_rule(rule: dict) -> str:
+    """Return a short description such as 'tcp/443', 'tcp/1-65535', 'icmp type 8' or 'all'."""
+    proto = rule.get("protocol") or "all"
+    if proto in ("all", "icmp_tcp_udp"):
+        return "all protocols, all ports"
+    if proto == "icmp":
+        desc = "icmp"
+        if rule.get("type") is not None:
+            desc += f" type {rule['type']}"
+            if rule.get("code") is not None:
+                desc += f" code {rule['code']}"
+        return desc
+    pmin, pmax = rule.get("port_min"), rule.get("port_max")
+    if pmin is None or pmax is None:
+        return f"{proto}/all ports"
+    return f"{proto}/{pmin}" if pmin == pmax else f"{proto}/{pmin}-{pmax}"
+
+
+def is_wide_open(rule: dict) -> bool:
+    """True for rules allowing all protocols or the full TCP/UDP port range."""
+    proto = rule.get("protocol") or "all"
+    if proto in ("all", "icmp_tcp_udp"):
+        return True
+    if proto in ("tcp", "udp"):
+        pmin, pmax = rule.get("port_min"), rule.get("port_max")
+        return pmin is None or pmax is None or (pmin <= 1 and pmax >= 65535)
     return False
 
 
@@ -163,14 +199,22 @@ def main(argv=None):
         print()  # newline after the final \r progress line
 
     # ── Fetch targets for every collected SG ─────────────────────────────────
+    # The ibmcloud CLI is left targeting the last scanned region, so re-target
+    # whenever the SG's region changes (all_vpc is grouped by region).
     total_sgs = len(all_vpc)
+    current_region = None
     for i, sg in enumerate(all_vpc, 1):
         sg_id = sg.get("id", "")
         sg_name = sg.get("name", "")
         sg_region = sg.get("region", "")
 
         if not args.v:
-            print(f"\rFetching targets {i}/{total_sgs}: {sg_name:<30}", end="", flush=True)
+            print(f"\r\033[KFetching targets {i}/{total_sgs}: {sg_name}", end="", flush=True)
+
+        if sg_region != current_region:
+            if not target_region(sg_region):
+                warning(f"Failed to target region {sg_region}; targets unavailable")
+            current_region = sg_region
 
         targets = get_sg_targets(sg_id, sg_region, args.d)
         sg["targets"] = targets
@@ -200,6 +244,25 @@ def main(argv=None):
     else:
         print(f"{BOLD}Security Groups with unrestricted inbound rules: 0{RESET}")
 
+    if unrestricted:
+        print()
+        print(f"{YELLOW}{BOLD}Unrestricted inbound rules (source 0.0.0.0/0):{RESET}")
+        for sg in unrestricted:
+            rules = unrestricted_rules(sg)
+            descs: list[str] = []
+            for rule in rules:
+                desc = describe_rule(rule)
+                if is_wide_open(rule):
+                    desc = f"{YELLOW}{BOLD}{desc}  <-- HIGH RISK{RESET}"
+                if desc not in descs:
+                    descs.append(desc)
+            target_count = len(sg.get("targets") or [])
+            print(f"  {BOLD}{sg.get('name')}{RESET} [{sg.get('region')}] ({target_count} target(s))")
+            for desc in descs:
+                print(f"    - {desc}")
+            if args.v:
+                print_targets(sg, "    ")
+
     print()
     if all_vpc:
         print(f"{BOLD}VPC Security Groups by region:{RESET}")
@@ -210,6 +273,8 @@ def main(argv=None):
                 for sg in [s for s in all_vpc if s.get("region") == region]:
                     target_count = len(sg.get("targets") or [])
                     print(f"    - {sg['name']} ({target_count} target(s))")
+                    if args.v:
+                        print_targets(sg, "        ")
         print()
         vpc_path.write_text(json.dumps(all_vpc, indent=2), encoding="utf-8")
         print(f"All VPC Security Groups saved to: {BOLD}{vpc_path}{RESET}")
