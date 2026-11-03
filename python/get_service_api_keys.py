@@ -134,8 +134,13 @@ def main(argv=None):
             executor.submit(fetch_keys_for_service, sid, sname, args.v, args.d): sid
             for sid, sname in id_name_map.items()
         }
-        for future in as_completed(futures):
+        for done, future in enumerate(as_completed(futures), 1):
             all_keys.extend(future.result())
+            if not args.v:
+                print(f"\rProcessed Service ID {done}/{total_svc}", end="", flush=True)
+
+    if not args.v:
+        print()  # newline after the final \r progress line
 
     if not all_keys:
         print(f"{BOLD}Total Service API keys: 0{RESET}")
