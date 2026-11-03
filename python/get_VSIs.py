@@ -44,7 +44,7 @@ def target_region(region: str) -> bool:
 
 
 def get_vsis_in_region(region: str) -> list[dict]:
-    result = _ibmcloud("is", "instances", "--output", "json")
+    result = _ibmcloud("is", "instances", "--all-resource-groups", "--output", "json")
     if result.returncode != 0 or not result.stdout.strip():
         return []
     try:
@@ -116,7 +116,7 @@ def main(argv=None):
         if args.v:
             line = f"{BOLD}[DEBUG]{RESET} Region: {region} — {len(vsis)} VSI(s) found"
             if args.d:
-                line += f" — {CYAN}ibmcloud is instances --output json{RESET}"
+                line += f" — {CYAN}ibmcloud is instances --all-resource-groups --output json{RESET}"
             print(line)
         all_vsis.extend(vsis)
 

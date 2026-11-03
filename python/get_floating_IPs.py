@@ -41,7 +41,7 @@ def target_region(region: str) -> bool:
 
 def get_floating_ips_in_region(region: str) -> list[str]:
     """Return list of floating IP addresses for the currently targeted region."""
-    result = _ibmcloud("is", "floating-ips", "-q")
+    result = _ibmcloud("is", "floating-ips", "--all-resource-groups", "-q")
     if result.returncode != 0 or not result.stdout.strip():
         return []
     ips = []
@@ -82,7 +82,7 @@ def main(argv=None):
         ips = get_floating_ips_in_region(region)
         region_counts[region] = len(ips)
         if args.v:
-            print(f"{BOLD}[DEBUG]{RESET} Region: {region} -> ibmcloud is floating-ips -q"
+            print(f"{BOLD}[DEBUG]{RESET} Region: {region} -> ibmcloud is floating-ips --all-resource-groups -q"
                   f" ({len(ips)} IP(s) found)")
         all_ips.extend(ips)
 
