@@ -111,6 +111,7 @@ def main(argv=None):
 
     if not projects:
         print("No Code Engine projects found.")
+        _ibmcloud("target", "--unset-resource-group", "-q")
         return
 
     # Save projects
