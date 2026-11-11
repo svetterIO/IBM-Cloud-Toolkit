@@ -14,7 +14,6 @@
 
 srcdir="$(dirname "${BASH_SOURCE[0]}")"
 . "$srcdir/utils.sh"
-ac
 # Default values
 OUTPUT_DIR="output"
 OUTPUT_FILE="service_api_keys.json"
