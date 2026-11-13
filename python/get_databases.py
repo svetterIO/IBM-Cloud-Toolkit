@@ -22,7 +22,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from utils import (
-    BOLD, CYAN, ORANGE, RESET, SEPARATOR,
+    BOLD, BRIGHT_RED, CYAN, ORANGE, RESET, SEPARATOR, YELLOW,
     _ibmcloud, ensure_output_dir, print_console_link,
     require_ibmcloud_cdb, require_ibmcloud_login, warning,
 )
@@ -213,11 +213,12 @@ def main(argv=None):
             elif service == "cloud-databases":
                 cdb_ref = db.get("crn") or db.get("name", "")
                 print(f"{BOLD}[DEBUG]{RESET} \"{name}\" ({service}) — endpoint: {ep_type} — "
+                      f"{BRIGHT_RED}{BOLD}Public endpoint found{RESET} — "
                       f"{CYAN}ibmcloud cdb deployment-connections {cdb_ref} "
                       f"--endpoint-type public --all --output json{RESET}")
             else:
                 print(f"{BOLD}[DEBUG]{RESET} \"{name}\" ({service}) — endpoint: {ep_type} — "
-                      f"public endpoint: {ext_endpoint or 'none'}")
+                      f"{BRIGHT_RED}{BOLD}Public endpoint found{RESET}: {ext_endpoint or 'none'}")
 
         if not has_public:
             continue
@@ -245,7 +246,7 @@ def main(argv=None):
 
     if public_dbs:
         public_path.write_text(json.dumps(public_dbs, indent=2), encoding="utf-8")
-        print(f"{BOLD}Databases with public endpoint: {len(public_dbs)}{RESET}")
+        print(f"{YELLOW}{BOLD}Databases with public endpoint: {len(public_dbs)}{RESET}")
         for db in public_dbs:
             print(f"  - {db['name']} ({db['db_service']}): "
                   f"{', '.join(db['public_endpoints']) or 'endpoint not retrieved'}")
