@@ -20,11 +20,18 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from utils import (
-    BOLD, ORANGE, RESET, SEPARATOR, YELLOW,
+    BOLD, BRIGHT_RED, CYAN, ORANGE, RESET, SEPARATOR, YELLOW,
     ensure_output_dir, failure, ibmcloud_access_token,
     ibmcloud_account_id, ibmcloud_get, print_console_link,
     require_ibmcloud_login,
 )
+
+
+def fmt_state(state: str) -> str:
+    """Highlight non-preferred (not ACTIVE / VPN_ONLY) states, e.g. PENDING or IAMID_INVALID."""
+    if state in ("ACTIVE", "VPN_ONLY"):
+        return state
+    return f"{BRIGHT_RED}{BOLD}{state}{RESET}"
 
 
 def parse_args(argv=None):
@@ -122,13 +129,22 @@ def main(argv=None):
         }
         done = 0
         for future in as_completed(futures):
-            enriched.append(future.result())
+            result = future.result()
+            enriched.append(result)
             done += 1
-            if not args.v and done % 10 == 0:
+            if args.v:
+                line = (f"{BOLD}[DEBUG]{RESET} Processed user {done}/{total}: "
+                        f"{result['email'] or result['user_id'] or result['iam_id']} "
+                        f"(State: {fmt_state(result['state'])}, Last activity: {result['last_activity']})")
+                if args.d:
+                    ident = result['email'] or result['user_id'] or result['iam_id']
+                    line += f" — {CYAN}ibmcloud account user-status {ident} --output JSON{RESET}"
+                print(line, flush=True)
+            else:
                 print(f"\rProcessed: {done}/{total} users...", end="", flush=True)
 
     if not args.v:
-        print(f"\rProcessed: {total}/{total} users... Done!")
+        print(" Done!")
 
     print()
     print("Aggregating results...")
@@ -150,6 +166,18 @@ def main(argv=None):
     print(f"  Inactive users: {BOLD}{inactive}{RESET}")
     print(" ")
     print(f"All users saved to: {BOLD}{output_path}{RESET}")
+
+    if args.d:
+        vpn_only_users = [u for u in enriched if u["state"] == "VPN_ONLY"]
+        print()
+        print(f"{BOLD}[DEBUG]{RESET} Commands to investigate users manually:")
+        print(f"  {CYAN}ibmcloud account users --account-id {account_id}{RESET}")
+        for label, group in (("Inactive", inactive_users), ("VPN only", vpn_only_users)):
+            for u in group:
+                ident = u["email"] or u["user_id"] or u["iam_id"]
+                print(f"{BOLD}[DEBUG]{RESET} {label} user: {ident} (State: {fmt_state(u['state'])})")
+                print(f"  {CYAN}ibmcloud account user-status {ident} --output JSON{RESET}")
+                print(f"  {CYAN}ibmcloud iam user-policies {ident} --output JSON{RESET}")
 
     if inactive > 0:
         inactive_path.write_text(
