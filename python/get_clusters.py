@@ -20,7 +20,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from utils import (
-    BOLD, ORANGE, RESET, SEPARATOR, YELLOW,
+    BOLD, CYAN, ORANGE, RESET, SEPARATOR, YELLOW,
     ensure_output_dir, failure, ibmcloud_access_token,
     ibmcloud_get, print_console_link, require_ibmcloud_login,
 )
@@ -65,7 +65,8 @@ def main(argv=None):
             print(f"{BOLD}[DEBUG]{RESET} Access token: {token}")
         else:
             print(f"{BOLD}[DEBUG]{RESET} Access token obtained ({token[:20]}...)")
-        print(f"{BOLD}[DEBUG]{RESET} GET https://containers.cloud.ibm.com/global/v2/vpc/getClusters")
+        print(f"{BOLD}[DEBUG]{RESET} Equivalent CLI command: "
+              f"{CYAN}ibmcloud ks cluster ls --provider vpc-gen2 --output json{RESET}")
 
     url = "https://containers.cloud.ibm.com/global/v2/vpc/getClusters"
     clusters_raw = ibmcloud_get(url, token)

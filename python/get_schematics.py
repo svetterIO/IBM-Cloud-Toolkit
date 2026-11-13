@@ -95,7 +95,8 @@ def main(argv=None):
         if args.v:
             line = f"{BOLD}[DEBUG]{RESET} Region: {region} — {len(ws)} workspace(s) found"
             if args.d:
-                line += f" — {CYAN}ibmcloud schematics workspace list --output json{RESET}"
+                line += (f" — {CYAN}ibmcloud target -r {region} -q; "
+                         f"ibmcloud schematics workspace list --output json{RESET}")
             print(line)
         all_workspaces.extend(ws)
 

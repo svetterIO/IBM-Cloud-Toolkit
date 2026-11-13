@@ -82,7 +82,8 @@ def main(argv=None):
         ips = get_floating_ips_in_region(region)
         region_counts[region] = len(ips)
         if args.v:
-            print(f"{BOLD}[DEBUG]{RESET} Region: {region} -> ibmcloud is floating-ips --all-resource-groups -q"
+            print(f"{BOLD}[DEBUG]{RESET} Region: {region} -> ibmcloud target -r {region} -q; "
+                  f"ibmcloud is floating-ips --all-resource-groups -q"
                   f" ({len(ips)} IP(s) found)")
         all_ips.extend(ips)
 

@@ -116,7 +116,8 @@ def main(argv=None):
         if args.v:
             line = f"{BOLD}[DEBUG]{RESET} Region: {region} — {len(vsis)} VSI(s) found"
             if args.d:
-                line += f" — {CYAN}ibmcloud is instances --all-resource-groups --output json{RESET}"
+                line += (f" — {CYAN}ibmcloud target -r {region} -q; "
+                         f"ibmcloud is instances --all-resource-groups --output json{RESET}")
             print(line)
         all_vsis.extend(vsis)
 

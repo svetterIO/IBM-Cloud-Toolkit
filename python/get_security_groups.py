@@ -193,6 +193,9 @@ def main(argv=None):
             continue
         sgs = get_vpc_sgs(region)
         region_counts[region] = len(sgs)
+        if args.d:
+            print(f"{BOLD}[DEBUG]{RESET} Region: {region} — {len(sgs)} security group(s) — {CYAN}ibmcloud target -r {region} -q; "
+                  f"ibmcloud is security-groups --all-resource-groups --output json{RESET}")
         all_vpc.extend(sgs)
 
     if not args.v:
@@ -225,7 +228,8 @@ def main(argv=None):
                 f" — {len(targets)} target(s)"
             )
             if args.d:
-                line += f" — {CYAN}ibmcloud is security-group-targets {sg_id} --output json{RESET}"
+                line += (f" — {CYAN}ibmcloud target -r {sg_region} -q; "
+                         f"ibmcloud is security-group-targets {sg_id} --output json{RESET}")
             print(line)
 
     if not args.v and total_sgs > 0:
@@ -258,6 +262,10 @@ def main(argv=None):
                     descs.append(desc)
             target_count = len(sg.get("targets") or [])
             print(f"  {BOLD}{sg.get('name')}{RESET} [{sg.get('region')}] ({target_count} target(s))")
+            if args.d:
+                print(f"    {BOLD}[DEBUG]{RESET} {CYAN}ibmcloud target -r {sg.get('region')} -q; "
+                      f"ibmcloud is security-group {sg.get('id')} --output json"
+                      f" | jq '.rules[] | select(.direction==\"inbound\" and .remote.cidr_block==\"0.0.0.0/0\")'{RESET}")
             for desc in descs:
                 print(f"    - {desc}")
             if args.v:
