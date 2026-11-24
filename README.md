@@ -26,8 +26,7 @@ IBM-Cloud-Toolkit/
 ├── reports/        Offline HTML report viewer (reports/index.html)
 │                   Run folders (reports/report_YYYYMMDD_HHMMSS/) are git-ignored
 ├── install/        IBM Cloud CLI installer (Python)
-├── docs/           Porting guides, pentest observation templates, test plans
-│   └── images/     README images
+├── docs/images     README images
 ├── requirements.txt
 ├── LICENSE
 └── README.md
