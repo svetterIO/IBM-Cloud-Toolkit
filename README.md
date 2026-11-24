@@ -20,7 +20,9 @@ Contributions and community feedback are welcome! If you find these scripts usef
 IBM-Cloud-Toolkit/
 ├── ibm_cloud_enum.py   Main runner script
 ├── utils.py            Shared utilities
-├── get_*.py            Enumeration modules
+├── get_*.py            Enumeration modules (run by default)
+├── search_*.py         Search modules (opt-in: run with -s from the runner, or directly)
+├── download_*.py       Download modules (opt-in: run with -m from the runner, or directly)
 ├── reports/        Offline HTML report viewer (reports/index.html)
 │                   Run folders (reports/report_YYYYMMDD_HHMMSS/) are git-ignored
 ├── install/        IBM Cloud CLI installers (PowerShell, Python)
