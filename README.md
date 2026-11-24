@@ -25,7 +25,7 @@ IBM-Cloud-Toolkit/
 ├── download_*.py       Download modules (opt-in: run with -m from the runner, or directly)
 ├── reports/        Offline HTML report viewer (reports/index.html)
 │                   Run folders (reports/report_YYYYMMDD_HHMMSS/) are git-ignored
-├── install/        IBM Cloud CLI installers (PowerShell, Python)
+├── install/        IBM Cloud CLI installer (Python)
 ├── docs/           Porting guides, pentest observation templates, test plans
 │   └── images/     README images
 ├── requirements.txt
@@ -59,12 +59,6 @@ Use the provided script to install the CLI and all required plugins:
 ```bash
 python3 install/install_ibmcloud_cli.py   # Linux/macOS
 python install\install_ibmcloud_cli.py    # Windows
-```
-
-### Windows (PowerShell)
-
-```powershell
-powershell -ExecutionPolicy Bypass -File install\install_ibmcloud_cli.ps1
 ```
 
 ### Manual installation
@@ -283,7 +277,6 @@ Scans all Cloud Object Storage bucket file keys for names that suggest sensitive
 
 | File | Platform | Description |
 |------|----------|-------------|
-| [install/install_ibmcloud_cli.ps1](install/install_ibmcloud_cli.ps1) | Windows | PowerShell installer with plugin support |
 | [install/install_ibmcloud_cli.py](install/install_ibmcloud_cli.py) | All | Python cross-platform installer |
 
 ---
@@ -318,8 +311,8 @@ A fully self-contained single-page application (no server, no CDN, no build step
 
 #### Repository layout
 - Python scripts at root, installers → `install/`, images → `docs/images/`. The legacy Bash implementation (`bash/`, `install/install_ibmcloud_cli.sh`) has been removed.
-- Cross-platform installers: `install/install_ibmcloud_cli.ps1` (Windows PowerShell) and `install/install_ibmcloud_cli.py` (cross-platform Python).
-- Line-ending config: `.gitattributes` (LF for `.py`, CRLF for `.ps1`) and `.editorconfig`.
+- Cross-platform installer: `install/install_ibmcloud_cli.py`. The PowerShell installer (`install/install_ibmcloud_cli.ps1`) has been removed.
+- Line-ending config: `.gitattributes` (LF for `.py`) and `.editorconfig`.
 - `docs/` expanded with porting guide, pentest observation templates, and test plans.
 
 ### Version 1.2

@@ -4,9 +4,6 @@
 # Python scripts always use LF
 *.py text eol=lf
 
-# PowerShell scripts use CRLF
-*.ps1 text eol=crlf
-
 # Text files
 *.md text eol=lf
 *.txt text eol=lf
