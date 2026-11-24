@@ -20,8 +20,6 @@ __pycache__/
 
 # Drafts and planned scripts (not yet implemented)
 draft/
-get_resources.sh
-get_load_balancers.sh
 
 *.md
 !README.md
