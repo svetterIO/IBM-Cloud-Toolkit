@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-python/get_floating_IPs.py
+get_floating_IPs.py
 
 Enumerates all floating IPs in each enabled IBM Cloud region.
 
@@ -30,7 +30,9 @@ def parse_args(argv=None):
     )
     p.add_argument("-o", metavar="OUTPUT_DIR", default="reports")
     p.add_argument("-f", metavar="OUTPUT_FILE", default="floating_ips.txt")
-    p.add_argument("-v", action="store_true")
+    p.add_argument("-v", action="store_true", help="Enable debug output")
+    p.add_argument("--show-token", action="store_true",
+                   help="Print access token in clear-text (default: redacted); requires -v")
     return p.parse_args(argv)
 
 

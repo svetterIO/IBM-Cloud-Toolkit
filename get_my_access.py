@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-python/get_my_access.py
+get_my_access.py
 
 Enumerates the access capabilities of the identity currently logged in to the
 IBM Cloud CLI (user, service ID or trusted profile):
@@ -27,7 +27,7 @@ from utils import (
     BOLD, ORANGE, RESET, SEPARATOR,
     _ibmcloud, ensure_output_dir, failure, ibmcloud_account_id,
     ibmcloud_account_name, ibmcloud_get, print_console_link,
-    require_ibmcloud_login,
+    redact, require_ibmcloud_login,
 )
 
 IAM_URL = "https://iam.cloud.ibm.com"
@@ -42,6 +42,10 @@ def parse_args(argv=None):
     p.add_argument("-o", metavar="OUTPUT_DIR", default="reports")
     p.add_argument("-f", metavar="OUTPUT_FILE", default="my_access.json")
     p.add_argument("-v", action="store_true", help="Enable debug output")
+    p.add_argument("-d", action="store_true",
+                   help="Full debug; requires -v")
+    p.add_argument("--show-token", action="store_true",
+                   help="Print access token in clear-text (default: redacted); requires -v")
     return p.parse_args(argv)
 
 
@@ -118,6 +122,10 @@ def list_groups(account_id: str, iam_id: str, token: str, debug: bool) -> list[d
 def main(argv=None):
     args = parse_args(argv)
 
+    if (args.d or args.show_token) and not args.v:
+        print("Error: -d and --show-token flags require -v flag to be set", file=sys.stderr)
+        sys.exit(1)
+
     require_ibmcloud_login()
     out_dir = ensure_output_dir(args.o)
     output_path = out_dir / args.f
@@ -127,8 +135,16 @@ def main(argv=None):
     print(f"Enumerating {ORANGE}{BOLD}your own access{RESET} (policies and access groups) in IAM...")
     print(" ")
 
+    if args.v:
+        print(f"{BOLD}[DEBUG]{RESET} Retrieving access token and claims")
+
     token, claims = get_token_and_claims()
     account_id = ibmcloud_account_id()
+
+    if args.v:
+        token_display = token if getattr(args, "show_token", False) else redact(token)
+        print(f"{BOLD}[DEBUG]{RESET} Access token: {token_display}")
+        print(f"{BOLD}[DEBUG]{RESET} Account ID: {account_id}")
     iam_id = claims.get("iam_id", "")
     if not iam_id:
         failure("Could not determine the IAM ID of the current identity from the token.")

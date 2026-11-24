@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-python/get_security_groups.py
+get_security_groups.py
 
 Enumerates IBM Cloud VPC and Classic Infrastructure security groups.
 Flags VPC security groups with unrestricted inbound rules (0.0.0.0/0).
@@ -37,6 +37,8 @@ def parse_args(argv=None):
     p.add_argument("-o", metavar="OUTPUT_DIR", default="reports")
     p.add_argument("-v", action="store_true", help="Verbose: show one line per security group")
     p.add_argument("-d", action="store_true", help="Full debug: append ibmcloud command to each line; requires -v")
+    p.add_argument("--show-token", action="store_true",
+                   help="Print access token in clear-text (default: redacted); requires -v")
     return p.parse_args(argv)
 
 

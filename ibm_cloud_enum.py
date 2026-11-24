@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 """
-python/ibm_cloud_enum.py
+ibm_cloud_enum.py
 
 IBM Cloud ToolKit v2.0 – Python runner.
 
-Executes all enumeration modules sequentially, mirroring the behaviour
-of bash/ibm_cloud_enum.sh.  No external dependencies beyond the IBM Cloud
-CLI and Python 3.8+ standard library.
+Executes all enumeration modules sequentially.  No external dependencies
+beyond the IBM Cloud CLI and Python 3.8+ standard library.
 
 Usage:
     python ibm_cloud_enum.py [-h] [-o OUTPUT_DIR] [-v] [-d]
@@ -130,7 +129,9 @@ def parse_args(argv=None):
         p.add_argument("-v", action="store_true",
                        help="Enable verbose/debug mode")
         p.add_argument("-d", action="store_true",
-                       help="Full debug mode (unredacted tokens); requires -v")
+                       help="Full debug mode; requires -v")
+        p.add_argument("--show-token", action="store_true",
+                       help="Print access tokens in clear-text (default: redacted); requires -v")
         args, extras = p.parse_known_args(argv)
         # Synthesise missing full-run attributes so the rest of main() still works
         args.p = 10
@@ -157,7 +158,9 @@ def parse_args(argv=None):
     p.add_argument("-v", action="store_true",
                    help="Enable debug mode for all modules")
     p.add_argument("-d", action="store_true",
-                   help="Full debug mode (unredacted tokens); requires -v")
+                   help="Full debug mode; requires -v")
+    p.add_argument("--show-token", action="store_true",
+                   help="Print access tokens in clear-text (default: redacted); requires -v")
     p.add_argument("-p", metavar="PARALLEL", type=int, default=10,
                    help="Parallel workers for get_users and get_service_api_keys (default: 10)")
     p.add_argument("-n", metavar="LIST_ITEMS", type=int, default=100,
@@ -207,7 +210,7 @@ def get_account_info() -> dict:
 def _run_module(module_main, script_name: str, common_flags: list[str], extra_flags: list[str] = None) -> None:
     """Print the command being executed, then call the module's main()."""
     flags = common_flags + (extra_flags or [])
-    cmd = " ".join(["python", f"python/{script_name}"] + flags)
+    cmd = " ".join(["python", script_name] + flags)
     print(f"\n{CYAN}{BOLD}>>>{RESET} {cmd}")
     try:
         module_main(flags)
@@ -268,6 +271,8 @@ def _build_flags(args, flag_set: str) -> list[str]:
         common += ["-o", args.o]
     if args.v:
         common.append("-v")
+    if getattr(args, "show_token", False):
+        common.append("--show-token")
 
     if flag_set == "common":
         return common
@@ -301,8 +306,8 @@ def _run_action(action_name: str, args, modules: dict) -> None:
 def main(argv=None):
     args = parse_args(argv)
 
-    if args.d and not args.v:
-        print("Error: -d flag requires -v flag to be set", file=sys.stderr)
+    if (args.d or getattr(args, "show_token", False)) and not args.v:
+        print("Error: -d and --show-token flags require -v flag to be set", file=sys.stderr)
         sys.exit(1)
 
     # Default to a time-bound report folder inside reports/ (e.g. reports/report_20261026_082939)
@@ -407,7 +412,7 @@ def main(argv=None):
         print(SEPARATOR)
         print(f"{CYAN}Skipping bucket file name search.{RESET}")
         print(f"To search bucket file names for sensitive patterns, re-run with {BOLD}-s{RESET}:")
-        print(f"  {BOLD}python python/ibm_cloud_enum.py -s{RESET}")
+        print(f"  {BOLD}python ibm_cloud_enum.py -s{RESET}")
 
     # download_buckets_files runs last, only when -m is explicitly provided
     if args.m is not None:
@@ -417,7 +422,7 @@ def main(argv=None):
         print(SEPARATOR)
         print(f"{CYAN}Skipping bucket file download.{RESET}")
         print(f"To download files from Object Storage buckets, re-run with {BOLD}-m MAX_ITEMS{RESET}:")
-        print(f"  {BOLD}python python/ibm_cloud_enum.py -m 10{RESET}   (download up to 10 files per bucket)")
+        print(f"  {BOLD}python ibm_cloud_enum.py -m 10{RESET}   (download up to 10 files per bucket)")
         print(f"  Add {BOLD}-f{RESET} to flatten paths (keep only filename).")
         print(f"  Add {BOLD}-n N{RESET} to change the listing limit (current: {BOLD}{args.n}{RESET} keys per bucket).")
 
@@ -433,7 +438,9 @@ def main(argv=None):
         print(f"{BOLD}Configuration used:{RESET}")
         print(f"  Debug mode: {BOLD}enabled{RESET}")
         if args.d:
-            print(f"  Full debug: {BOLD}enabled{RESET} (unredacted tokens)")
+            print(f"  Full debug: {BOLD}enabled{RESET}")
+        if getattr(args, "show_token", False):
+            print(f"  Show token: {BOLD}enabled{RESET} (unredacted)")
         print(f"  Output directory: {BOLD}{output_dir}{RESET}")
         if args.p != 10:
             print(f"  Parallel workers: {BOLD}{args.p}{RESET}")

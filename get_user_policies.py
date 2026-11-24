@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-python/get_user_policies.py
+get_user_policies.py
 
 Identifies users with access policies assigned directly (not via groups).
 
@@ -21,7 +21,7 @@ from utils import (
     BOLD, BRIGHT_RED, CYAN, ORANGE, RESET, SEPARATOR,
     ensure_output_dir, failure, ibmcloud_access_token,
     ibmcloud_account_id, ibmcloud_get, print_console_link,
-    require_ibmcloud_login,
+    redact, require_ibmcloud_login,
 )
 
 
@@ -34,14 +34,16 @@ def parse_args(argv=None):
     p.add_argument("-f", metavar="OUTPUT_FILE", default="user_policies.txt")
     p.add_argument("-v", action="store_true", help="Verbose: show ibmcloud command per user")
     p.add_argument("-d", action="store_true", help="Full debug: also show the console URL; requires -v")
+    p.add_argument("--show-token", action="store_true",
+                   help="Print access token in clear-text (default: redacted); requires -v")
     return p.parse_args(argv)
 
 
 def main(argv=None):
     args = parse_args(argv)
 
-    if args.d and not args.v:
-        print("Error: -d flag requires -v flag to be set", file=sys.stderr)
+    if (args.d or args.show_token) and not args.v:
+        print("Error: -d and --show-token flags require -v flag to be set", file=sys.stderr)
         sys.exit(1)
 
     require_ibmcloud_login()
@@ -60,6 +62,9 @@ def main(argv=None):
     account_id = ibmcloud_account_id()
 
     if args.v:
+        token_display = token if getattr(args, "show_token", False) else redact(token)
+        print(f"{BOLD}[DEBUG]{RESET} Access token: {token_display}")
+        print(f"{BOLD}[DEBUG]{RESET} Account ID: {account_id}")
         print(f"{BOLD}[DEBUG]{RESET} GET https://iam.cloud.ibm.com/v2/accounts/{account_id}/users")
 
     users_data = ibmcloud_get(

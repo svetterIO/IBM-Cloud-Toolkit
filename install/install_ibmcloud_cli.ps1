@@ -80,7 +80,7 @@ if ($InstallPlugins -match "^[yY]$") {
 Write-Host ""
 Write-Host "Next steps:"
 Write-Host "  1. Log in:       ibmcloud login"
-Write-Host "  2. Run toolkit:  python python\ibm_cloud_enum.py"
+Write-Host "  2. Run toolkit:  python ibm_cloud_enum.py"
 Write-Host ""
 Write-Host "For more info, see: https://cloud.ibm.com/docs/cli"
 Write-Host "Completed."

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-python/get_api_keys.py
+get_api_keys.py
 
 Enumerates all IBM Cloud account-level API keys and identifies those
 not rotated within a configurable number of days (default: 90).
@@ -43,6 +43,8 @@ def parse_args(argv=None):
     p.add_argument("-d", metavar="ROTATION_DAYS", type=int, default=90,
                    help="Rotation threshold in days (default: 90)")
     p.add_argument("-v", action="store_true", help="Enable debug output")
+    p.add_argument("--show-token", action="store_true",
+                   help="Print access token in clear-text (default: redacted); requires -v")
     return p.parse_args(argv)
 
 

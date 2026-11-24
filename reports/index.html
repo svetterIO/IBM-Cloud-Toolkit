@@ -1614,7 +1614,7 @@ async function renderRun(run) {
   }
   if (token !== renderToken) return; // a newer run was selected meanwhile
   modulesEl.replaceChildren(...built.map(({ mod, sections }) => {
-    const cmd = `python python/ibm_cloud_enum.py ${mod.script}`;
+    const cmd = `python ibm_cloud_enum.py ${mod.script}`;
     const copyBtn = el('button', { class: 'icon-btn', type: 'button', title: 'Copy command', 'aria-label': 'Copy command' }, icon('copy'));
     copyBtn.addEventListener('click', () => copyPayload({ text: cmd }).then(ok => ok && toast('Command copied')));
     const cmdBar = el('div', { class: 'cmd-bar' }, el('code', null, cmd), copyBtn);

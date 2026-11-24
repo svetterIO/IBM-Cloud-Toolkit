@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-python/get_service_api_keys.py
+get_service_api_keys.py
 
 Enumerates all Service IDs and their associated API keys.
 Detects leaked keys (containing an apikey value) and non-rotated keys.
@@ -43,6 +43,8 @@ def parse_args(argv=None):
     p.add_argument("-v", action="store_true", help="Verbose: show commands and per-service-ID progress")
     p.add_argument("-d", action="store_true",
                    help="Full debug: also print each individual ibmcloud service-api-keys command")
+    p.add_argument("--show-token", action="store_true",
+                   help="Print access token in clear-text (default: redacted); requires -v")
     return p.parse_args(argv)
 
 

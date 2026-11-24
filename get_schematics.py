@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-python/get_schematics.py
+get_schematics.py
 
 Enumerates IBM Cloud Schematics workspaces per region.
 
@@ -38,6 +38,8 @@ def parse_args(argv=None):
                         "(default: 'us-south eu-de ca-tor')")
     p.add_argument("-v", action="store_true", help="Verbose: show region and workspace count per region")
     p.add_argument("-d", action="store_true", help="Full debug: also show ibmcloud command per region; requires -v")
+    p.add_argument("--show-token", action="store_true",
+                   help="Print access token in clear-text (default: redacted); requires -v")
     return p.parse_args(argv)
 
 

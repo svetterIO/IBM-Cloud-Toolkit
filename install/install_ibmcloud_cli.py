@@ -130,9 +130,9 @@ def main() -> None:
     print("Next steps:")
     print("  1. Log in:       ibmcloud login")
     if system == "windows":
-        print(r"  2. Run toolkit:  python python\ibm_cloud_enum.py")
+        print(r"  2. Run toolkit:  python ibm_cloud_enum.py")
     else:
-        print("  2. Run toolkit:  python3 python/ibm_cloud_enum.py")
+        print("  2. Run toolkit:  python3 ibm_cloud_enum.py")
     print()
     print("For more info, see: https://cloud.ibm.com/docs/cli")
     print("Completed.")

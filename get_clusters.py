@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-python/get_clusters.py
+get_clusters.py
 
 Enumerates IBM Cloud Kubernetes/OpenShift clusters.
 Flags clusters with public endpoints enabled.
@@ -22,7 +22,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from utils import (
     BOLD, CYAN, ORANGE, RESET, SEPARATOR, YELLOW,
     ensure_output_dir, failure, ibmcloud_access_token,
-    ibmcloud_get, print_console_link, require_ibmcloud_login,
+    ibmcloud_get, print_console_link, redact, require_ibmcloud_login,
 )
 
 
@@ -33,16 +33,18 @@ def parse_args(argv=None):
     )
     p.add_argument("-o", metavar="OUTPUT_DIR", default="reports")
     p.add_argument("-f", metavar="OUTPUT_FILE", default="clusters.json")
-    p.add_argument("-v", action="store_true")
+    p.add_argument("-v", action="store_true", help="Enable debug output")
     p.add_argument("-d", action="store_true",
-                   help="Full debug (show token); requires -v")
+                   help="Full debug; requires -v")
+    p.add_argument("--show-token", action="store_true",
+                   help="Print access token in clear-text (default: redacted); requires -v")
     return p.parse_args(argv)
 
 
 def main(argv=None):
     args = parse_args(argv)
-    if args.d and not args.v:
-        print("Error: -d flag requires -v flag to be set", file=sys.stderr)
+    if (args.d or args.show_token) and not args.v:
+        print("Error: -d and --show-token flags require -v flag to be set", file=sys.stderr)
         sys.exit(1)
 
     require_ibmcloud_login()
@@ -61,10 +63,8 @@ def main(argv=None):
     token = ibmcloud_access_token()
 
     if args.v:
-        if args.d:
-            print(f"{BOLD}[DEBUG]{RESET} Access token: {token}")
-        else:
-            print(f"{BOLD}[DEBUG]{RESET} Access token obtained ({token[:20]}...)")
+        token_display = token if getattr(args, "show_token", False) else redact(token)
+        print(f"{BOLD}[DEBUG]{RESET} Access token: {token_display}")
         print(f"{BOLD}[DEBUG]{RESET} Equivalent CLI command: "
               f"{CYAN}ibmcloud ks cluster ls --provider vpc-gen2 --output json{RESET}")
 

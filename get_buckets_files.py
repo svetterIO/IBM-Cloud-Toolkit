@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-python/get_buckets_files.py
+get_buckets_files.py
 
 Lists all files in all IBM Cloud Object Storage buckets.
 Bucket listings are fetched in parallel (default: 10 workers) to speed up
@@ -37,7 +37,9 @@ def parse_args(argv=None):
     p.add_argument("-m", metavar="MAX_ITEMS", type=int, default=100)
     p.add_argument("-p", metavar="MAX_PARALLEL", type=int, default=10,
                    help="Parallel workers for bucket listing (default: 10)")
-    p.add_argument("-v", action="store_true")
+    p.add_argument("-v", action="store_true", help="Enable debug output")
+    p.add_argument("--show-token", action="store_true",
+                   help="Print access token in clear-text (default: redacted); requires -v")
     return p.parse_args(argv)
 
 

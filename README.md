@@ -1,8 +1,8 @@
 <h1 align="center"><img src="docs/images/IBM_Cloud_logo.png" alt="IBM Cloud" width=300 height=214></h1>
 
 # IBM Cloud ToolKit
-A collection of scripts for enumeration of IBM Cloud resources and identification of weak security settings.
-Available as **Bash** (Linux/macOS) and **Python 3** (Linux, macOS, Windows).
+A collection of Python 3 scripts for enumeration of IBM Cloud resources and identification of weak security settings.
+Runs on Linux, macOS and Windows.
 
 ## Why was this project created?
 
@@ -18,11 +18,12 @@ Contributions and community feedback are welcome! If you find these scripts usef
 
 ```
 IBM-Cloud-Toolkit/
-├── bash/           Bash modules, utils.sh, ibm_cloud_enum.sh
-├── python/         Python modules, utils.py, ibm_cloud_enum.py
+├── ibm_cloud_enum.py   Main runner script
+├── utils.py            Shared utilities
+├── get_*.py            Enumeration modules
 ├── reports/        Offline HTML report viewer (reports/index.html)
 │                   Run folders (reports/report_YYYYMMDD_HHMMSS/) are git-ignored
-├── install/        IBM Cloud CLI installers (Bash, PowerShell, Python)
+├── install/        IBM Cloud CLI installers (PowerShell, Python)
 ├── docs/           Porting guides, pentest observation templates, test plans
 │   └── images/     README images
 ├── requirements.txt
@@ -39,15 +40,9 @@ Required permissions may vary depending on the services being audited. At minimu
 
 ![IBM Cloud recommended permissions](docs/images/IBMCloud_permissions.png)
 
-### Bash implementation
-- **IBM Cloud CLI** – see [Installation](#ibm-cloud-cli-installation) below
-- **jq** – lightweight command-line JSON processor
-- **Bash 4.3 or later** – on macOS, install Homebrew's Bash and ensure it is in your `PATH`
-- Authenticated session via `ibmcloud login`
-
-### Python implementation
+### Requirements
 - **Python 3.8+**
-- **IBM Cloud CLI** – the Python scripts call the CLI for authentication and plugin commands
+- **IBM Cloud CLI** – see [Installation](#ibm-cloud-cli-installation) below; the Python scripts call the CLI for authentication and plugin commands
 - Authenticated session via `ibmcloud login`
 - No external Python packages required (standard library only)
 
@@ -55,15 +50,22 @@ Required permissions may vary depending on the services being audited. At minimu
 
 ## IBM Cloud CLI Installation
 
-### Linux / macOS
+### Cross-platform (Python)
 
 Use the provided script to install the CLI and all required plugins:
 
 ```bash
-bash install/install_ibmcloud_cli.sh
+python3 install/install_ibmcloud_cli.py   # Linux/macOS
+python install\install_ibmcloud_cli.py    # Windows
 ```
 
-Or install manually:
+### Windows (PowerShell)
+
+```powershell
+powershell -ExecutionPolicy Bypass -File install\install_ibmcloud_cli.ps1
+```
+
+### Manual installation
 
 ```bash
 # macOS
@@ -73,22 +75,7 @@ curl -fsSL https://clis.cloud.ibm.com/install/osx | sh
 curl -fsSL https://clis.cloud.ibm.com/install/linux | sh
 ```
 
-### Windows
-
-Use the provided PowerShell script:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File install\install_ibmcloud_cli.ps1
-```
-
-Or download the installer directly from the [IBM Cloud CLI releases page](https://github.com/IBM-Cloud/ibm-cloud-cli-release/releases).
-
-### Cross-platform (Python)
-
-```bash
-python install/install_ibmcloud_cli.py   # Linux/macOS
-python install\install_ibmcloud_cli.py   # Windows
-```
+On Windows, download the installer from the [IBM Cloud CLI releases page](https://github.com/IBM-Cloud/ibm-cloud-cli-release/releases).
 
 ### Plugin Installation
 
@@ -141,20 +128,12 @@ python -m pip install -r requirements.txt
 
 ![ibm_cloud_enum.py execution](docs/images/ibm_cloud_enum.png)
 
-### Bash (Linux / macOS)
-
-```bash
-bash/ibm_cloud_enum.sh
-```
-
-### Python
-
 ```bash
 # Linux / macOS
-python3 python/ibm_cloud_enum.py
+python3 ibm_cloud_enum.py
 
 # Windows
-python python\ibm_cloud_enum.py
+python ibm_cloud_enum.py
 ```
 
 ---
@@ -213,7 +192,7 @@ The Python runner (`ibm_cloud_enum.py`) writes every run into a **time-bound fol
 Each script accepts a `-h` flag for usage information. Example for `get_api_keys`:
 
 ```
-$ python3 python/get_api_keys.py -h
+$ python3 get_api_keys.py -h
 usage: get_api_keys.py [-h] [-o OUTPUT_DIR] [-f OUTPUT_FILE] [-d ROTATION_DAYS] [-v]
 
 Enumerate IBM Cloud API keys and flag non-rotated ones.
@@ -230,72 +209,70 @@ options:
 
 ## Scripts
 
-The Bash and Python versions expose the same options and produce the same output files.
-
-#### - [ibm_cloud_enum](bash/ibm_cloud_enum.sh) / [ibm_cloud_enum.py](python/ibm_cloud_enum.py)
+#### - [ibm_cloud_enum.py](ibm_cloud_enum.py)
 Executes all enumeration scripts against the IBM Cloud Account.
 
-#### - [get_custom_roles](bash/get_custom_roles.sh) / [get_custom_roles.py](python/get_custom_roles.py)
+#### - [get_custom_roles.py](get_custom_roles.py)
 Enumerates custom IAM roles to be verified for excessive privileges granted to users.
 
-#### - [get_users](bash/get_users.sh) / [get_users.py](python/get_users.py)
+#### - [get_users.py](get_users.py)
 Enumerates existing users and identifies any with state different than ACTIVE.
 
-#### - [get_user_policies](bash/get_user_policies.sh) / [get_user_policies.py](python/get_user_policies.py)
+#### - [get_user_policies.py](get_user_policies.py)
 Identifies users with access policies assigned directly (not via groups).
 
-#### - [get_api_keys](bash/get_api_keys.sh) / [get_api_keys.py](python/get_api_keys.py)
+#### - [get_api_keys.py](get_api_keys.py)
 Enumerates existing API Keys and identifies those not rotated within a configurable period (default: 90 days).
 
-#### - [get_mfa](bash/get_mfa.sh) / [get_mfa.py](python/get_mfa.py)
+#### - [get_mfa.py](get_mfa.py)
 Retrieves the IBM Cloud account identity settings and determines the MFA requirement status.
 
-#### - [get_regions](bash/get_regions.sh) / [get_regions.py](python/get_regions.py)
+#### - [get_regions.py](get_regions.py)
 Enumerates enabled regions on the IBM Cloud account.
 
-#### - [get_floating_IPs](bash/get_floating_IPs.sh) / [get_floating_IPs.py](python/get_floating_IPs.py)
+#### - [get_floating_IPs.py](get_floating_IPs.py)
 Enumerates all floating IPs in each enabled IBM Cloud region.
 
-#### - [get_VSIs](bash/get_VSIs.sh) / [get_VSIs.py](python/get_VSIs.py)
+#### - [get_VSIs.py](get_VSIs.py)
 Enumerates all VSIs (IBM Cloud VMs) in each enabled IBM Cloud region. Also generates a separate file for VSIs with metadata enabled.
 
-#### - [get_buckets](bash/get_buckets.sh) / [get_buckets.py](python/get_buckets.py)
+#### - [get_buckets.py](get_buckets.py)
 Enumerates all IBM Cloud Object Storage buckets in the account.
 
-#### - [get_buckets_files](bash/get_buckets_files.sh) / [get_buckets_files.py](python/get_buckets_files.py)
+#### - [get_buckets_files.py](get_buckets_files.py)
 Lists all files in existing IBM Cloud Object Storage buckets. **Note:** Disabled for automatic execution in the runner scripts due to potentially long execution times. Run manually.
 
-#### - [download_buckets_files](bash/download_buckets_files.sh) / [download_buckets_files.py](python/download_buckets_files.py)
+#### - [download_buckets_files.py](download_buckets_files.py)
 Downloads files from all IBM Cloud Object Storage buckets. Supports flattening and overwrite options.
 
-#### - [get_schematics](bash/get_schematics.sh) / [get_schematics.py](python/get_schematics.py)
+#### - [get_schematics.py](get_schematics.py)
 Enumerates all IBM Cloud Schematics workspaces in each enabled region. Output can be reviewed with [TruffleHog](https://github.com/trufflesecurity/trufflehog) or [detect-secrets](https://github.com/Yelp/detect-secrets) to identify secrets stored in variables.
 
-#### - [get_clusters](bash/get_clusters.sh) / [get_clusters.py](python/get_clusters.py)
+#### - [get_clusters.py](get_clusters.py)
 Enumerates all IBM Cloud Kubernetes/Openshift clusters. Also generates a separate file for clusters with public endpoint enabled.
 
-#### - [get_databases](bash/get_databases.sh) / [get_databases.py](python/get_databases.py)
+#### - [get_databases.py](get_databases.py)
 Enumerates all IBM Cloud Databases (Cloud Databases, DB2 and Cloudant). Also generates a separate file for databases with public endpoint enabled, including their public endpoints (`hostname:port`).
 
-#### - [get_security_groups](bash/get_security_groups.sh) / [get_security_groups.py](python/get_security_groups.py)
+#### - [get_security_groups.py](get_security_groups.py)
 Enumerates all IBM Cloud VPC security groups and identifies overly permissive inbound rules.
 
-#### - [get_load_balancers](bash/get_load_balancers.sh) / [get_load_balancers.py](python/get_load_balancers.py)
+#### - [get_load_balancers.py](get_load_balancers.py)
 Enumerates all IBM Cloud VPC Load Balancers in each enabled region, with their listeners, pools and subnets. Also generates a separate file for public load balancers, including their public endpoints (`hostname:port`).
 
-#### - [get_code_engine](bash/get_code_engine.sh) / [get_code_engine.py](python/get_code_engine.py)
+#### - [get_code_engine.py](get_code_engine.py)
 Enumerates all IBM Cloud Code Engine projects. For each project, retrieves Applications (including environment variables and public endpoint status), Functions, ConfigMaps, and Secrets.
 
-#### - [get_service_api_keys](python/get_service_api_keys.py) *(Python only)*
+#### - [get_service_api_keys.py](get_service_api_keys.py)
 Enumerates all Service IDs and their associated API keys. Detects keys whose plaintext value is returned by the IAM API (exposed/leaked keys) and flags keys not rotated within a configurable threshold (default: 90 days). Verbose (`-v`) mode shows per-key debug lines with IBM Cloud CLI commands; full-debug (`-d`) appends the exact `ibmcloud iam service-api-keys` command for each key.
 
-#### - [get_container_registry](python/get_container_registry.py) *(Python only)*
+#### - [get_container_registry.py](get_container_registry.py)
 Enumerates IBM Cloud Container Registry namespaces, images, and settings. Flags images with known vulnerabilities reported by Vulnerability Advisor and images that have not been scanned.
 
-#### - [get_my_access](python/get_my_access.py) *(Python only)*
+#### - [get_my_access.py](get_my_access.py)
 Enumerates the access capabilities of the identity currently logged in to the IBM Cloud CLI (user, service ID or trusted profile): identity details decoded from the IAM token, direct access policies, and the policies of all access groups the identity belongs to.
 
-#### - [search_buckets_file_names](python/search_buckets_file_names.py) *(Python only, opt-in)*
+#### - [search_buckets_file_names.py](search_buckets_file_names.py)
 Scans all Cloud Object Storage bucket file keys for names that suggest sensitive content (passwords, credentials, API keys, certificates, etc.). Run with `-s` flag in the full runner or independently. Results include instance name, bucket, region, full object key, and matched keywords.
 
 ---
@@ -304,7 +281,6 @@ Scans all Cloud Object Storage bucket file keys for names that suggest sensitive
 
 | File | Platform | Description |
 |------|----------|-------------|
-| [install/install_ibmcloud_cli.sh](install/install_ibmcloud_cli.sh) | Linux / macOS | Bash installer with plugin support |
 | [install/install_ibmcloud_cli.ps1](install/install_ibmcloud_cli.ps1) | Windows | PowerShell installer with plugin support |
 | [install/install_ibmcloud_cli.py](install/install_ibmcloud_cli.py) | All | Python cross-platform installer |
 
@@ -314,9 +290,9 @@ Scans all Cloud Object Storage bucket file keys for names that suggest sensitive
 
 ### Version 2.0
 
-#### Python implementation
-- Full Python 3.8+ implementation of every Bash module — works on Linux, macOS, and Windows without `jq` or `curl`.
-- Single entry-point runner `python/ibm_cloud_enum.py` executes all modules sequentially or a single named module (`python ibm_cloud_enum.py get_api_keys`).
+#### Python-only implementation
+- Full Python 3.8+ implementation of every former Bash module — works on Linux, macOS, and Windows without `jq` or `curl`. The Bash implementation has been removed.
+- Single entry-point runner `ibm_cloud_enum.py` executes all modules sequentially or a single named module (`python ibm_cloud_enum.py get_api_keys`).
 - Two-phase argument parser: runner-level flags (`-o`, `-v`, `-d`) are consumed by the runner; all remaining flags are forwarded as-is to the target module, preventing flag collisions.
 - Time-bound output folders: every full run writes to `reports/report_YYYYMMDD_HHMMSS/` automatically so runs never overwrite each other.
 
@@ -339,9 +315,9 @@ A fully self-contained single-page application (no server, no CDN, no build step
 - **gitignore**: `reports/*` with `!reports/index.html` — viewer is always tracked; run folders (client data) are never committed.
 
 #### Repository layout
-- Bash scripts → `bash/`, Python scripts → `python/`, installers → `install/`, images → `docs/images/`.
+- Python scripts at root, installers → `install/`, images → `docs/images/`. The legacy Bash implementation (`bash/`, `install/install_ibmcloud_cli.sh`) has been removed.
 - Cross-platform installers: `install/install_ibmcloud_cli.ps1` (Windows PowerShell) and `install/install_ibmcloud_cli.py` (cross-platform Python).
-- Line-ending config: `.gitattributes` (LF for `.sh`/`.py`, CRLF for `.ps1`) and `.editorconfig`.
+- Line-ending config: `.gitattributes` (LF for `.py`, CRLF for `.ps1`) and `.editorconfig`.
 - `docs/` expanded with porting guide, pentest observation templates, and test plans.
 
 ### Version 1.2
@@ -359,7 +335,7 @@ A fully self-contained single-page application (no server, no CDN, no build step
 - **DB2 Database**: Adds support for identifying IBM Cloud DB2 database instances.
 - **Code Engine**: Enumerates IBM Cloud Code Engine projects.
 - **Security Groups**: Enumerates security groups and flags overly permissive rules.
-- **Execution Change**: `get_buckets_files.sh` is now disabled in `ibm_cloud_enum.sh` and must be executed manually.
+- **Execution Change**: `get_buckets_files` is now disabled in the runner and must be executed manually.
 
 ---
 

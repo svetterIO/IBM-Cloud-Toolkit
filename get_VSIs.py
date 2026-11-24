@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-python/get_VSIs.py
+get_VSIs.py
 
 Enumerates IBM Cloud Virtual Server Instances (VSIs) in each region.
 Flags VSIs with the metadata service enabled.
@@ -35,6 +35,8 @@ def parse_args(argv=None):
     p.add_argument("-f", metavar="OUTPUT_FILE", default="VSIs.json")
     p.add_argument("-v", action="store_true", help="Verbose: show region and VSI count per region")
     p.add_argument("-d", action="store_true", help="Full debug: also show ibmcloud command per region; requires -v")
+    p.add_argument("--show-token", action="store_true",
+                   help="Print access token in clear-text (default: redacted); requires -v")
     return p.parse_args(argv)
 
 

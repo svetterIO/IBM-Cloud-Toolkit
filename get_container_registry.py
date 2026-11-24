@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-python/get_container_registry.py
+get_container_registry.py
 
 Enumerates IBM Cloud Container Registry namespaces, images, and settings.
 Flags images with known vulnerabilities (Vulnerability Advisor) and images
@@ -36,6 +36,8 @@ def parse_args(argv=None):
     p.add_argument("-o", metavar="OUTPUT_DIR", default="reports")
     p.add_argument("-f", metavar="OUTPUT_FILE", default="cr_images.json")
     p.add_argument("-v", action="store_true", help="Enable debug output")
+    p.add_argument("--show-token", action="store_true",
+                   help="Print access token in clear-text (default: redacted); requires -v")
     return p.parse_args(argv)
 
 

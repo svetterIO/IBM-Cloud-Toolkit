@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-python/download_buckets_files.py
+download_buckets_files.py
 
 Downloads files from all IBM Cloud Object Storage buckets.
 Supports optional flattening of output filenames and overwrite control.
@@ -146,10 +146,12 @@ def parse_args(argv=None):
         description="Download files from IBM Cloud Object Storage buckets.",
     )
     p.add_argument("-o", metavar="OUTPUT_DIR", default="reports/bucket_files")
-    p.add_argument("-v", action="store_true")
+    p.add_argument("-v", action="store_true", help="Enable debug output")
     p.add_argument("-m", metavar="MAX_ITEMS", type=int, default=10)
     p.add_argument("-y", action="store_true", help="Overwrite existing files")
     p.add_argument("-f", action="store_true", help="Flatten output (filename only)")
+    p.add_argument("--show-token", action="store_true",
+                   help="Print access token in clear-text (default: redacted); requires -v")
     return p.parse_args(argv)
 
 

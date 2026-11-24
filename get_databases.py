@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-python/get_databases.py
+get_databases.py
 
 Enumerates IBM Cloud Databases (cdb deployments), DB2 instances and Cloudant instances.
 Flags databases with non-private endpoints and retrieves their public endpoints
@@ -37,6 +37,8 @@ def parse_args(argv=None):
     p.add_argument("-f", metavar="OUTPUT_FILE", default="databases.json")
     p.add_argument("-v", action="store_true", help="Verbose: one line per database with endpoint type and ibmcloud command")
     p.add_argument("-d", action="store_true", help="Full debug: also show service-instance lookup command; requires -v")
+    p.add_argument("--show-token", action="store_true",
+                   help="Print access token in clear-text (default: redacted); requires -v")
     return p.parse_args(argv)
 
 

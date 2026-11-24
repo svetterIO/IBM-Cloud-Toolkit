@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-python/get_load_balancers.py
+get_load_balancers.py
 
 Enumerates IBM Cloud VPC Load Balancers in every enabled region, including their
 listeners (protocol:port). Flags public load balancers and reports their
@@ -35,6 +35,8 @@ def parse_args(argv=None):
     p.add_argument("-o", metavar="OUTPUT_DIR", default="reports")
     p.add_argument("-f", metavar="OUTPUT_FILE", default="load_balancers.json")
     p.add_argument("-v", action="store_true", help="Enable debug output")
+    p.add_argument("--show-token", action="store_true",
+                   help="Print access token in clear-text (default: redacted); requires -v")
     return p.parse_args(argv)
 
 

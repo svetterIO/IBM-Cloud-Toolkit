@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-python/search_buckets_file_names.py
+search_buckets_file_names.py
 
 Scans all IBM Cloud Object Storage bucket file keys for names that suggest
 sensitive content (passwords, credentials, API keys, certificates, etc.).
@@ -167,6 +167,8 @@ def parse_args(argv=None):
                         "Added on top of the defaults.")
     p.add_argument("-v", action="store_true",
                    help="Enable debug mode")
+    p.add_argument("--show-token", action="store_true",
+                   help="Print access token in clear-text (default: redacted); requires -v")
     return p.parse_args(argv)
 
 

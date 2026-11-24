@@ -25,4 +25,4 @@ draft/
 !README.md
 
 # Test case runners and local pentest scripts (not for the repo)
-python/run_tc_*.py
+run_tc_*.py

@@ -1,9 +1,8 @@
 """
-python/utils.py
+utils.py
 
-Shared utilities for the IBM Cloud ToolKit Python implementation.
+Shared utilities for the IBM Cloud ToolKit.
 
-This module is the Python counterpart of bash/utils.sh.
 It provides:
 - Color constants for terminal output
 - IBM Cloud CLI helper functions (access token, account ID, etc.)
@@ -222,6 +221,16 @@ def print_console_link(label: str, url: str, nav: str = "") -> None:
         print(f"  {BOLD}{url}{RESET}  {BLUE}({nav}){RESET}")
     else:
         print(f"  {BOLD}{url}{RESET}")
+
+
+def redact(value: str) -> str:
+    """Return a[..REDACTED..]b — first 2 and last 2 characters visible, middle hidden.
+    Returns '[..REDACTED..]' if the value is too short."""
+    if not value:
+        return ""
+    if len(value) <= 4:
+        return "[..REDACTED..]"
+    return f"{value[:2]}[..REDACTED..]{value[-2:]}"
 
 
 def ensure_output_dir(path: str) -> Path:

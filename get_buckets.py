@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-python/get_buckets.py
+get_buckets.py
 
 Enumerates all IBM Cloud Object Storage buckets in the account.
 
@@ -33,6 +33,8 @@ def parse_args(argv=None):
     p.add_argument("-f", metavar="OUTPUT_FILE", default="buckets.json")
     p.add_argument("-v", action="store_true", help="Verbose: show instance name and bucket count per instance")
     p.add_argument("-d", action="store_true", help="Full debug: also show ibmcloud command per instance; requires -v")
+    p.add_argument("--show-token", action="store_true",
+                   help="Print access token in clear-text (default: redacted); requires -v")
     return p.parse_args(argv)
 
 
